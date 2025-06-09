@@ -13,19 +13,35 @@
 		<option value="database">data base</option>
 		<option value="ftp">ftp</option>
 </select>
-<button type="button" onclick="addConnection()">Add</button>
-<div id="blockContainer"></div>
+<button type="button" onclick="add_configuration(value)">Add</button>
+<div id="block_s3"></div>
+<div id="block_database"></div>
+<div id="block_ftp"></div>
 
 <h2>sources</h2>
+<button type="button" onclick="add_source('blockSources')">Add Source</button>
+<div id="blockSources"></div>
 
 <h2>transforms</h2>
 <h2>sinks</h2>
 
+<from method="POST">
+		<button type="submit">Submit</button>
+</from>
 <p>
 		<a href="/">
 				<button>Back</button>
 		</a>
 </p>
+
+{% if submitted_config %}
+		<h3>Submitted Data:</h3>
+		<ul>
+				{% for item in submitted_config %}
+				<li>{{ item }}</li>
+				{% endfor %}
+		</ul>
+{% endif %}
 
 <script src="{{ url_for('static', filename='js/config.js') }}"></script>
 

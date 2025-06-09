@@ -12,6 +12,11 @@ def home():
 
 @app.route("/config", methods=["GET", "POST"])
 def config():
+	if request.method == "POST":
+		submitted_config = request.form.getlist()
+		print(submitted_config)
+	
+	# if submitted_config:
 	return render_template("config.html")
 
 
