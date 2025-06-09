@@ -1,0 +1,15 @@
+{
+	"connections": {
+		"s3": {
+			"type": "s3",
+			"bucket": "onebeat-tam"
+		},
+		"dtp-diggerx-validation": {
+			"type": "htt ",
+			"base_url": "http://202.144.226.222:3000"
+		}
+	},
+	"sources": {},
+	"transforms": {},
+	"sinks": {}
+}

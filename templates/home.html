@@ -1,10 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+		<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+		<title>Home</title>
+		<!--        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">-->
 </head>
 <body>
-$END$
+<!--<h1>Welcome to the TAM app!</h1>-->
+<div class="Container">
+		<h1>Welcome to the TAM app!</h1>
+</div>
+<button class="btn"><a href="/config">Go to config.yaml</a></button>
+<p><a href="/mapper">Go to input_file_mapper.yml</a></p>
+<p><a href="/catalogs">Go to catalogs.py</a></p>
+<p><a href="/inventories">Go to inventories.py</a></p>
+<p><a href="/locations">Go to locations.py</a></p>
+<p><a href="/transactions">Go to transactions.py</a></p>
 </body>
 </html>
+
