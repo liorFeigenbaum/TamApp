@@ -19,6 +19,7 @@ def config():
 def mapper():
 	if request.method == "POST":
 		submitted_data = request.form.getlist("data[]")
+		print(submitted_data)
 		return render_template("mapper.html", submitted_data=submitted_data)
 	return render_template("mapper.html", submitted_data=None)
 
