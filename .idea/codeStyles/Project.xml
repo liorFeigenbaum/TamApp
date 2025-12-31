@@ -2,7 +2,9 @@
   <code_scheme name="Project" version="173">
     <HTMLCodeStyleSettings>
       <option name="HTML_UNIFORM_INDENT" value="true" />
+      <option name="HTML_ATTRIBUTE_WRAP" value="0" />
       <option name="HTML_ALIGN_TEXT" value="true" />
+      <option name="HTML_DO_NOT_INDENT_CHILDREN_OF" value="tbody,tfoot" />
     </HTMLCodeStyleSettings>
     <Python>
       <option name="DICT_NEW_LINE_AFTER_LEFT_BRACE" value="true" />
@@ -15,7 +17,7 @@
         <option name="CONTINUATION_INDENT_SIZE" value="6" />
         <option name="TAB_SIZE" value="2" />
         <option name="USE_TAB_CHARACTER" value="true" />
-        <option name="SMART_TABS" value="true" />
+        <option name="KEEP_INDENTS_ON_EMPTY_LINES" value="true" />
       </indentOptions>
     </codeStyleSettings>
     <codeStyleSettings language="JSON">

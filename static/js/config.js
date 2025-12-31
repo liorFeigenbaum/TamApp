@@ -15,11 +15,12 @@ function add_configuration() {
                 }
 
 				switch (type) {
-						case "s3":
+						case    "s3":
 								html = `
 										<label>Name:</label><input type="text" name="s3_name[]" placeholder="Name"><br>
 										<label>Type:</label><input type="text" name="s3_type[]" placeholder="Type"><br>
 										<label>Bucket:</label><input type="text" name="s3_bucket[]" placeholder="Bucket"><br>
+										<button type="button" class="remove-btn">Remove</button>
 								`;
 								break;
 
@@ -38,6 +39,7 @@ function add_configuration() {
 										<label>Username:</label><input type="text" name="db_username[]" placeholder="Username"><br>
 										<label>Password:</label><input type="password" name="db_password[]" placeholder="Password"><br>
 										<label>Database:</label><input type="text" name="db_database[]" placeholder="Database"><br>
+										<button type="button" class="remove-btn">Remove</button>
 								`;
 								break;
 
@@ -52,6 +54,7 @@ function add_configuration() {
 										<label>Port:</label><input type="number" name="ftp_port[]" placeholder="Port"><br>
 										<label>Username:</label><input type="text" name="ftp_username[]" placeholder="Username"><br>
 										<label>Password:</label><input type="password" name="ftp_password[]" placeholder="Password"><br>
+										<button type="button" class="remove-btn">Remove</button>
 								`;
 								break;
 
@@ -97,3 +100,9 @@ function add_source(containerId) {
 
     container.appendChild(block);
 }
+
+document.addEventListener("click", function (e) {
+    if (e.target.classList.contains("remove-btn")) {
+        e.target.closest(".input-block").remove();
+    }
+});

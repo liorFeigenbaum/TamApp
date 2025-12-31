@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+		<head>
+				<title>Config.yaml validator</title>
+				<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+				<style>
+						body {
+								font-family: 'Poppins', sans-serif;
+								margin: 20px;
+						}
+						.input-block {
+								border: 1px solid #ccc;
+								padding: 15px;
+								margin: 10px 0;
+								border-radius: 8px;
+								background-color: #f9f9f9;
+						}
+						.input-block input {
+								margin: 5px 0;
+								padding: 6px;
+								width: 100%;
+						}
+				</style>
+		</head>
+		<body>
+				
+				<h1>Config.yaml validator</h1>
+				
+				<form method="POST" enctype="multipart/form-data">
+						<input type="file" name="file" accept=".yaml,.yml" class="btn_sub" required>
+						<button class="btn_sub" type="submit">Validate</button>
+				</form>
+				
+				{% if error %}
+				<p>
+				<h2 style="color:red;">{{ error }}</h2>
+				</p>
+				{% endif %}
+				
+				{% if submitted_data %}
+				<p>
+				<h2 style="color:green;">{{ submitted_data }}</h2>
+				</p>
+				{% endif %}
+				
+				{% if warning %}
+				<p>
+				<h2 style="color:orange;">{{ warning }} </h2>
+				</p>
+				{% endif %}
+				
+				{% if skip_watning %}
+				<p>
+				<h2 style="color:orange;">{{ skip_watning }} </h2>
+				</p>
+				{% endif %}
+				
+				{% if submitted_data or error %}
+				<form method="POST" action="/back" style="margin-top:20px;">
+						<button class="btn_sub" type="submit">⬅ Back</button>
+				</form>
+				{% endif %}
+		</body>
+
+</html>

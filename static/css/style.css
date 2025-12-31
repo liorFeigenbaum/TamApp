@@ -19,11 +19,15 @@ body {
 .btn {
   background-color: #bcbec0;
   color: white;
-  padding: 12px 24px;
+  padding: 12px 36px;
   border: none;
-  border-radius: 8px;
+  border-radius: 16px;
   font-family: 'Poppins', sans-serif;
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 700;          /* bold text */
+  width: 400px;              /* same width for all buttons */
+  text-align: left;        /* align text to the left */
+  text-decoration: none;     /* remove underline (for <a>) */
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
@@ -31,15 +35,50 @@ body {
 /* Hover and active states */
 .btn:hover {
   background-color: #1a314b;
+  text-decoration: none;     /* prevent underline on hover */
 }
 
 .btn:active {
   transform: scale(0.98);
 }
 
+/* Button sub Styling */
+.btn_sub {
+  background-color: #bcbec0;
+  color: white;
+  padding: 12px 36px;
+  border: none;
+  border-radius: 16px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 18px;
+  font-weight: 700;          /* bold text */
+  /*width: 400px;              /* same width for all buttons */
+  text-align: left;        /* align text to the left */
+  text-decoration: none;     /* remove underline (for <a>) */
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+/* Hover and active states */
+.btn_sub:hover {
+  background-color: #1a314b;
+  text-decoration: none;     /* prevent underline on hover */
+}
+
+.btn_sub:active {
+  transform: scale(0.98);
+}
+
+.remove-btn {
+    background-color: #d9534f;
+    margin-top: 10px;
+}
+
+
 .input-block {
   border: 1px solid #ccc;
-  padding: 15px;
+  padding: 25px;
+  width: 45%;
   margin: 10px 0;
   border-radius: 8px;
     background-color: #f9f9f9;
@@ -47,5 +86,5 @@ body {
 .input-block input {
   margin: 5px 0;
   padding: 6px;
-  width: 100%;
+  width: 95%;
 }
