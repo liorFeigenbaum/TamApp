@@ -1,54 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-		<meta charset="UTF-8">
-		<title>config.yaml</title>
-		<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-</head>
-<body>
-<h1>config.yaml generator</h1>
-<h2>connections</h2>
-<select id="blockType">
-		<option value="s3">s3</option>
-		<option value="database">data base</option>
-		<option value="ftp">ftp</option>
-</select>
-<button type="button" onclick="add_configuration(value)">Add</button>
-<div id="block_s3"></div>
-<div id="block_database"></div>
-<div id="block_ftp"></div>
-
-<h2>sources</h2>
-<button type="button" onclick="add_source('blockSources')">Add Source</button>
-<div id="blockSources"></div>
-
-<h2>transforms</h2>
-<h2>sinks</h2>
-
-<from method="POST">
-		<button type="submit">Submit</button>
-</from>
-<p>
-		<a href="/">
-				<button>Back</button>
-		</a>
-</p>
-
-{% if submitted_config %}
-		<h3>Submitted Data:</h3>
-		<ul>
-				{% for item in submitted_config %}
-				<li>{{ item }}</li>
-				{% endfor %}
-		</ul>
-{% endif %}
-
-<script src="{{ url_for('static', filename='js/config.js') }}"></script>
-
-</body>
-<style>
-		body {
-				font-family: 'Poppins', sans-serif;
-		}
-</style>
+		<head>
+				<meta charset="UTF-8">
+				<title>config.yaml</title>
+				<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+		</head>
+		<body>
+				<h1>config.yaml generator</h1>
+				<form method="POST">
+						<h2>client</h2>
+						<div id="client" class="input-block">
+								<label>Name:</label><input type="text" id="client_name_input" name="client_name"
+																					 placeholder="Client's name"><br>
+								<label>AVO
+											 ID:</label><input type="text" id="avo_id_input" name="client_id"
+																				 placeholder="Client's AVO id"><br>
+						</div>
+						<h2>connections</h2>
+						<select id="blockType">
+								<option value="s3">s3</option>
+								<option value="database">data base</option>
+								<option value="ftp">ftp</option>
+								<option value="vpn">vpn</option>
+								<option value="snowflake">snowflake</option>
+						</select>
+						<button type="button" onclick="add_configuration(value)">Add</button>
+						<div id="block_s3">
+								<h4>S3 Configuration</h4>
+								<div class="two-columns">
+										<div class="input-block" id="s3_tam">
+												<label>Name:</label>
+												<input type="text" name="s3_name[]" value="tam-s3" readonly><br>
+												<label>Type:</label>
+												<input type="text" name="s3_type[]" value="s3" readonly><br>
+												<label>Bucket:</label>
+												<input type="text" name="s3_bucket[]" value="onebeat-tam" readonly><br>
+										</div>
+										<div class="input-block" id="s3_api">
+												<label>Name:</label>
+												<input type="text" name="s3_name[]" value="onebeat-api-v-s3" readonly><br>
+												<label>Type:</label>
+												<input type="text" name="s3_type[]" value="s3" readonly><br>
+												<label>Bucket:</label>
+												<input type="text" name="s3_bucket[]" value="onebeat-api-validation" readonly><br>
+										</div>
+								</div>
+						</div>
+						<div id="block_database"></div>
+						<div id="block_ftp"></div>
+						<div id="block_vpn"></div>
+						<div id="snowflake"></div>
+						
+						<h2>sources</h2>
+						<button type="button" onclick="add_source('blockSources')">Add Source</button>
+						<div id="blockSources" class="two-columns">
+								<div id="mapper" class="input-block">
+										<label>Name:</label><input type="text" name="mapper_name" value="input_file_mapper.yml" radonly><br>
+										<label>Type:</label><input type="text" name="mapper_type" value="file" radonly><br>
+										<label>File
+													 Name:</label><input type="text" name="mapper_path" value="input_file_mapper.yml" radonly><br>
+								</div>
+						</div>
+						
+						<h2>transforms</h2>
+						<button type="button" onclick="add_transform()">Add Source</button>
+						<div id="blockTransforms" class="two-columns"></div>
+						
+						
+						<h2>sinks</h2>
+						<div id="sink" class="input-block">
+								<label>Name:</label><input type="text" name="sink_name" placeholder="input_files"><br>
+								<label>Sources:</label>
+								<select id="sink_source_selector">
+										<option value="">-- select source --</option>
+								</select>
+								
+								<button type="button" onclick="add_sink_source()">Add</button>
+								
+								<ul id="sink_sources_list"></ul>
+								<label>Transforms:</label><input type="text" name="transform_file" placeholder="File Name"><br>
+								<label> file name:</label>
+								<select id="filename" name="sink_file_name">
+										<option
+													value="uploads/accounts/{client}/{client}_input_data_%Y_%m_%d"
+													data-template="uploads/accounts/{client}/{client}_input_data_%Y_%m_%d">
+												uploads/accounts/{client}/{client}_input_data_%Y_%m_%d
+										</option>
+										<option
+													value="uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d"
+													data-template="uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d">
+												uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d
+										</option>
+								</select><br>
+								<!--						<label> connection:</label>-->
+								<!--						<select name="sink_connection">connections.map(name => `<option value="${name}">${name}</option>`).join("")"</select><br>-->
+						
+						</div>
+						
+						
+						<button type="submit">Submit</button>
+				</form>
+				<p>
+						<a href="/">
+								<button>Back</button>
+						</a>
+				</p>
+				
+				{% if submitted_config %}
+				<h3>Submitted Data:</h3>
+				<ul>
+						{% for item in submitted_config %}
+						<li>{{ item }}</li>
+						{% endfor %}
+				</ul>
+				{% endif %}
+				
+				<script src="{{ url_for('static', filename='js/config.js') }}"></script>
+		
+		</body>
+		<style>
+				body {
+						font-family: 'Poppins', sans-serif;
+				}
+		</style>
 </html>

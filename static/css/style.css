@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
 
 
-h1, h2, h3 {
+h1, h2, h3, h4 {
 	color: #f8f8f8;	
 }
 
@@ -13,6 +13,7 @@ h1, h2, h3 {
 body {
 	font-family: 'Poppins', sans-serif;
 	background: #1F6C6D;
+	margin: 20px;
 }
 
 /* Button Styling */
@@ -74,17 +75,28 @@ body {
     margin-top: 10px;
 }
 
+.two-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* two equal columns */
+    gap: 16px;
+}
 
 .input-block {
   border: 1px solid #ccc;
   padding: 25px;
-  width: 45%;
-  margin: 10px 0;
+  width: 85%;
+  margin: 5px 0;
   border-radius: 8px;
     background-color: #f9f9f9;
 }
+
+.input-block label {
+  padding: 20px;
+  width: 50%; /* fixed label width */
+}
+
 .input-block input {
   margin: 5px 0;
   padding: 6px;
-  width: 95%;
+  width: 60%;
 }

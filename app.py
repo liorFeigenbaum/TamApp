@@ -2,6 +2,8 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, session
 
 from werkzeug.utils import secure_filename
+
+from toll_box.jsons import pretty_print_json
 from toll_box.logs import start_log
 
 from scripts.config_yaml_validation.config_validator import validate_config_yaml
@@ -29,8 +31,9 @@ def home():
 @app.route("/config", methods=["GET", "POST"])
 def config():
 	if request.method == "POST":
-		submitted_config = request.form.getlist()
-		print(submitted_config)
+		submitted_config = request.form.to_dict(flat=False)
+		pretty_print_json(submitted_config)
+		# print(submitted_config)
 	
 	# if submitted_config:
 	return render_template("config.html")
@@ -70,7 +73,7 @@ def config_validator():
 			session["uploaded_file"] = filepath
 			
 			result = validate_config_yaml(filepath)
-	
+		
 		if not result["ok"]:
 			error = result["error"]
 		else:
@@ -86,8 +89,9 @@ def config_validator():
 		error=error,
 		warning=warning,
 		skip_watning=skip_watning
-	)
-	
+		)
+
+
 @app.route("/back", methods=["POST"])
 def back():
 	filepath = session.pop("uploaded_file", None)
@@ -96,14 +100,15 @@ def back():
 		os.remove(filepath)
 	
 	return redirect(url_for("home"))
-	
-	# @app.route("/contact", methods=["GET", "POST"])
-	# def contact():
-	#     if request.method == "POST":
-	#         name = request.form["name"]
-	#         return f"<h2>Hello, {name}!</h2><p><a href='/contact'>Back</a></p>"
-	#     return render_template("contact.html")
-	
+
+
+# @app.route("/contact", methods=["GET", "POST"])
+# def contact():
+#     if request.method == "POST":
+#         name = request.form["name"]
+#         return f"<h2>Hello, {name}!</h2><p><a href='/contact'>Back</a></p>"
+#     return render_template("contact.html")
+
 if __name__ == "__main__":
 	start_log()
 	app.run(debug=True)  # Enables auto-reload and debug output

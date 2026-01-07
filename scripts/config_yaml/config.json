@@ -1,15 +1,71 @@
 {
-	"connections": {
-		"s3": {
-			"type": "s3",
-			"bucket": "onebeat-tam"
-		},
-		"dtp-diggerx-validation": {
-			"type": "htt ",
-			"base_url": "http://202.144.226.222:3000"
-		}
-	},
-	"sources": {},
-	"transforms": {},
-	"sinks": {}
+	"client_name": [
+		"haruyama"
+	],
+	"client_id": [
+		"2dee2612-88e1-4db9-8dad-8cac1f550104"
+	],
+	"s3_name[]": [
+		"tam-s3",
+		"onebeat-api-v-s3",
+		"io-s3"
+	],
+	"s3_type[]": [
+		"s3",
+		"s3",
+		"s3"
+	],
+	"s3_bucket[]": [
+		"onebeat-tam",
+		"onebeat-api-validation",
+		"onebeat-io"
+	],
+	"mapper_name": [
+		"input_file_mapper.yml"
+	],
+	"mapper_type": [
+		"file"
+	],
+	"mapper_path": [
+		"input_file_mapper.yml"
+	],
+	"source_name[]": [
+		"catalogs.csv",
+		"locations.csv",
+		"transactions.csv",
+		"inventories.csv"
+	],
+	"source_connection[]": [
+		"io-s3",
+		"io-s3",
+		"tam-s3",
+		"io-s3"
+	],
+	"source_type[]": [
+		"s3",
+		"s3",
+		"s3",
+		"s3"
+	],
+	"source_path[]": [
+		"haruyama/%Y%m%d_catalog.csv",
+		"haruyama/%Y%m%d_locations.csv",
+		"haruyama/%Y%m%d_transactions.csv",
+		"haruyama/%Y%m%d_inventory.csv"
+	],
+	"transform_name[]": [
+		"transformations"
+	],
+	"transform_type[]": [
+		"python"
+	],
+	"transform_file[]": [
+		"transformations.py"
+	],
+	"sink_name": [
+		"input_files"
+	],
+	"transform_file": [
+		"transformations"
+	]
 }
