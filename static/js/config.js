@@ -1,172 +1,124 @@
 let sourceCounter = 0;
 const sourcesRegistry = {};
-// This function adds a connection block input
-function add_configuration() {
-				const type = document.getElementById("blockType").value;
-				const container = document.getElementById("block_" + type);
+const DATABASE_TYPES = ["postgres", "mssql", "mysql", "oracle"];
 
-        // Create input block
-				const block = document.createElement("div");
-				block.className = "input-block";
+// --------------------------------------------------
+// CONNECTIONS
+// --------------------------------------------------
+async function add_configuration() {
+    const type = document.getElementById("blockType").value;
+    const container = document.getElementById("block_" + type);
 
-				let html = "";
-
-        // Add header once
-				if (!container.querySelector("h4")) {
-                    const header = document.createElement("h4");
-                    header.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} Configuration`;
-                    container.appendChild(header);
-                }
-
-//               Create / get two-columns wrapper
-        let two_columns = container.querySelector(".two-columns");
-        if (!two_columns) {
-            two_columns = document.createElement("div");
-            two_columns.className = "two-columns";
-            container.appendChild(two_columns);
-        }
-
-        // Build fields
-        switch (type) {
-            case "s3":
-                html = `
-                    <label>Name:</label><input type="text" name="s3_name[]" placeholder="Name"><br>
-                    <label>Type:</label><input type="text" name="s3_type[]" value="s3" readonly><br>
-                    <label>Bucket:</label><input type="text" name="s3_bucket[]" placeholder="Bucket"><br>
-                    <button type="button" class="remove-btn">Remove</button>
-                `;
-                break;
-
-            case "database":
-                html = `
-                    <label>Name:</label><input type="text" name="db_name[]" placeholder="Name"><br>
-                    <label>Type:</label>
-                    <select name="db_type[]">
-                        <option value="postgres">Postgres</option>
-                        <option value="mssql">MSSQL</option>
-                        <option value="mysql">MySQL</option>
-                        <option value="oracle">Oracle</option>
-                    </select><br>
-                    <label>Host:</label><input type="text" name="db_host[]" placeholder="Host"><br>
-                    <label>Port:</label><input type="number" name="db_port[]" placeholder="Port"><br>
-                    <label>Username:</label><input type="text" name="db_username[]" placeholder="Username"><br>
-                    <label>Password:</label><input type="password" name="db_password[]" placeholder="Password"><br>
-                    <label>Database:</label><input type="text" name="db_database[]" placeholder="Database"><br>
-                    <button type="button" class="remove-btn">Remove</button>
-                `;
-                break;
-
-            case "ftp":
-                html = `
-                    <label>Name:</label><input type="text" name="ftp_name[]" placeholder="Name"><br>
-                    <label>Type:</label>
-                    <select name="ftp_type[]">
-                        <option value="ftp">FTP</option>
-                        <option value="sftp">SFTP</option>
-                    </select><br>
-                    <label>Host:</label><input type="text" name="ftp_host[]" placeholder="Host"><br>
-                    <label>Port:</label><input type="number" name="ftp_port[]" placeholder="Port"><br>
-                    <label>Username:</label><input type="text" name="ftp_username[]" placeholder="Username"><br>
-                    <label>Password:</label><input type="password" name="ftp_password[]" placeholder="Password"><br>
-                    <button type="button" class="remove-btn">Remove</button>
-                `;
-                break;
-
-            case "vpn":
-                html = `
-                    <label>Name:</label><input type="text" name="vpn_name[]" placeholder="Name"><br>
-                    <label>Type:</label><input type="text" name="vpn_type[]" value="vpn" readonly><br>
-                    <label>Product:</label><input type="text" name="vpn_product[]" placeholder="Product"><br>
-                    <label>User name:</label><input type="text" name="vpn_username[]" placeholder="Username"><br>
-                    <label>Password:</label><input type="password" name="vpn_password[]" placeholder="Password"><br>
-                    <label>Address:</label><input type="text" name="vpn_address[]" placeholder="address:port"><br>
-                    <label>Server cert:</label><input type="text" name="vpn_servercert[]" placeholder="Server cert"><br>
-                    <label>Hostnames:</label><input type="text" name="vpn_hostnames[]" placeholder="ip/port"><br>
-                    <button type="button" class="remove-btn">Remove</button>
-                `;
-                break;
-
-            default:
-                html = `<p>Unknown type selected.</p>`;
-        }
-
-        block.innerHTML = html;
-
-        // Append block into two-columns
-        two_columns.appendChild(block);
-        }
-
-
-// This function get all connections name
-function get_all_connection_names() {
-    const names = [];
-    document.querySelectorAll("input[name$='_name[]']").forEach(input => {
-        if (input.value.trim()) names.push(input.value.trim());
-    });
-    return names;
-}
-
-// This function adds a source block input
-function add_source(containerId) {
-    const container = document.getElementById(containerId);
-    const block = document.createElement("div");
-    block.className = "input-block";
-
-    const connections = get_all_connection_names();
-    if (connections.length === 0) {
-        alert("Please add at least one connection before adding sources.");
-        return;
+    // Add header once
+    if (!container.querySelector("h4")) {
+        const header = document.createElement("h4");
+        header.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} Configuration`;
+        container.appendChild(header);
     }
 
-    let connectionOptions = connections.map(name => `<option value="${name}">${name}</option>`).join("");
+    // Create / get two-columns wrapper
+    let two_columns = container.querySelector(".two-columns");
+    if (!two_columns) {
+        two_columns = document.createElement("div");
+        two_columns.className = "two-columns";
+        container.appendChild(two_columns);
+    }
+
+    try {
+        const response = await fetch(`/static/config_blocks/${type}.html`);
+        if (!response.ok) throw new Error("Failed to fetch template");
+        const html = await response.text();
+
+        // Create a temporary div and append
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
+
+        // Append the template inside the two-columns wrapper
+        two_columns.appendChild(tempDiv.firstElementChild);
+    } catch (err) {
+        console.error("Error loading template:", err);
+        alert("Failed to load configuration block HTML for " + type);
+    }
+}
+
+// --------------------------------------------------
+// SOURCES
+// --------------------------------------------------
+
+async function add_source(containerId) {
+    const selected_connection = document.getElementById("source_connection_selector").value;
+    const container = document.getElementById(containerId);
 
     sourceCounter++;
     const sourceId = `source_${sourceCounter}`;
-    const sourceName = `Source ${sourceCounter}`;
+    sourcesRegistry[sourceId] = sourceId;
 
-    sourcesRegistry[sourceId] = sourceName;
+    // -----------------------------
+    // Determine source type
+    // -----------------------------
 
-    block.innerHTML = `
-        <label>Name:</label><input type="text" name="source_name[]" placeholder="Source Name"><br>
-        <label>Connection:</label>
-        <select name="source_connection[]">${connectionOptions}</select><br>
-        <label>Type:</label><input type="text" name="source_type[]" placeholder="Source Type"><br>
-        <label>Path/File Name:</label><input type="text" name="source_path[]" placeholder="Path or File Name"><br>
-        <button type="button" class="remove-btn">Remove</button>
+    let type = "file";
 
-    `;
+    if (selected_connection !== "file") {
+        const all_inputs = document.querySelectorAll("input[name$='_name[]']");
+        const input = Array.from(all_inputs).find(i => i.value === selected_connection);
 
-    container.appendChild(block);
+        if (!input) {
+            alert(`Connection "${selected_connection}" not found!`);
+            return;
+        }
 
-    // ---- Sink checkbox ----
-    const checkboxDiv = document.createElement("div");
-    checkboxDiv.className = "sink-source";
-    checkboxDiv.dataset.sourceId = sourceId;
+        // Look for the type input inside the same block
+        const parentBlock = input.closest(".input-block");
 
-    checkboxDiv.innerHTML = `
-        <label>
-            <input type="checkbox" name="sink_sources[]" value="${sourceId}">
-            ${sourceId}
-        </label>
-    `;
+        const type_input =
+            parentBlock.querySelector("input[name$='_type[]'], select[name$='_type[]']");
 
-    document.getElementById("sink_sources").appendChild(checkboxDiv);
+        let raw_type = type_input ? type_input.value : "unknown";
+
+        // 🔥 NORMALIZATION STEP
+        if (DATABASE_TYPES.includes(raw_type)) {
+            type = "database";
+        } else {
+            type = raw_type;
+        }
+    }
+
+    // -----------------------------
+    // Fetch source template
+    // -----------------------------
+    try {
+        const response = await fetch(`/static/source_blocks/${type}.html`);
+        if (!response.ok) throw new Error("Template not found");
+
+        const html = await response.text();
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
+
+        const block = tempDiv.firstElementChild;
+
+        // Inject selected connection if needed
+        const connectionInput = block.querySelector("[data-connection]");
+        if (connectionInput) {
+            connectionInput.value = selected_connection;
+        }
+
+        container.appendChild(block);
+    } catch (err) {
+        console.error(err);
+        alert(`Failed to load source template for type "${type}"`);
+    }
+
 }
 
-// This function add a transform block input
+// --------------------------------------------------
+// TRANSFORMS
+// --------------------------------------------------
+
 function add_transform() {
-//    const container = document.getElementById(containerId);
     const container = document.getElementById("blockTransforms");
     const block = document.createElement("div");
     block.className = "input-block";
-
-//    const connections = get_all_connection_names();
-//    if (connections.length === 0) {
-//        alert("Please add at least one connection before adding sources.");
-//        return;
-//    }
-//
-//    let connectionOptions = connections.map(name => `<option value="${name}">${name}</option>`).join("");
 
     block.innerHTML = `
         <label>Name:</label><input type="text" name="transform_name[]" placeholder="Transform Name"><br>
@@ -176,15 +128,113 @@ function add_transform() {
     `;
 
     container.appendChild(block);
-    update_sink_source_selector();
 }
 
+// --------------------------------------------------
+// SINKS GENERATOR
+// --------------------------------------------------
 
+document.getElementById("wizardForm").addEventListener("submit", (e) => {
+    const sinkNameInput = document.querySelector("input[name='sink_name']");
+    if (sinkNameInput && !sinkNameInput.value) {
+        sinkNameInput.value = sinkNameInput.placeholder; // fallback to placeholder
+    }
+});
+
+function generate_sink_sources_list() {
+
+    const listContainer = document.getElementById("sink_sources_list");
+    if (!listContainer) return;
+
+    listContainer.innerHTML = "";
+
+    // Loop through all sources
+    document.querySelectorAll("input[name='source_name[]']").forEach((input, idx) => {
+        const connectionInput = input.closest(".input-block").querySelector("input[name='source_connection[]']");
+        const typeInput = input.closest(".input-block").querySelector("input[name='source_type[]']");
+
+        const div = document.createElement("div");
+        div.className = "sink-source-item";
+        div.innerHTML = `
+            <label>
+                <input type="checkbox" name="sink_sources[]" value="${input.value}" >
+                ${input.value}
+            </label>
+        `;
+
+        listContainer.appendChild(div);
+    });
+}
+
+function generate_sink_transforms_list() {
+
+    const listContainer = document.getElementById("sink_transforms_list");
+    if (!listContainer) return;
+
+    listContainer.innerHTML = "";
+
+    // Loop through all sources
+    document.querySelectorAll("input[name='transform_name[]']").forEach((input, idx) => {
+        const typeInput = input.closest(".input-block").querySelector("input[name='source_type[]']");
+
+        const div = document.createElement("div");
+        div.className = "sink-source-item";
+        div.innerHTML = `
+            <label>
+                <input type="checkbox" name="sink_transform[]" value="${input.value}" >
+                ${input.value}
+            </label>
+        `;
+
+        listContainer.appendChild(div);
+    });
+
+}
+
+// --------------------------------------------------
+// REMOVE BUTTON (GLOBAL)
+// ------------
 document.addEventListener("click", function (e) {
     if (e.target.classList.contains("remove-btn")) {
         e.target.closest(".input-block").remove();
     }
 });
+
+// --------------------------------------------------
+// HELPERS
+// --------------------------------------------------
+
+function get_all_connection_names() {
+    const names = [];
+    document.querySelectorAll("input[name$='_name[]']").forEach(input => {
+        if (input.value.trim()) names.push(input.value.trim());
+    });
+    return names;
+}
+
+function populate_source_connection_selector() {
+  const select = document.getElementById("source_connection_selector");
+  const selectSink = document.getElementById("sink_connection_selector");
+  if (!select) return;
+
+  // clear existing
+  select.innerHTML = "";
+  selectSink.innerHTML = "";
+
+  // default option
+  select.appendChild(new Option("-- select connection --", ""));
+  selectSink.appendChild(new Option("-- select connection --", ""));
+
+  // fixed "file" option
+  select.appendChild(new Option("file", "file"));
+
+  // dynamic connections
+  const connections = get_all_connection_names();
+  connections.forEach(name => {
+    select.appendChild(new Option(name, name));
+    selectSink.appendChild(new Option(name, name));
+  });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const clientInput = document.getElementById("client_name_input");
@@ -221,4 +271,39 @@ document.addEventListener("DOMContentLoaded", () => {
   if (avoInput) avoInput.addEventListener("input", updateOptions);
 });
 
+let current_step = 0;
+const steps = document.querySelectorAll(".form-step");
 
+function show_step(index) {
+  steps.forEach((step, i) => {
+    step.classList.toggle("active", i === index);
+  });
+}
+
+function nextStep() {
+  if (current_step < steps.length - 1) {
+    current_step++;
+    if (current_step === 2) {
+      populate_source_connection_selector();
+    }
+
+    if (current_step === 3) {
+      generate_sink_sources_list();
+    }
+
+    if (current_step === 4) {
+      generate_sink_transforms_list();
+    }
+    show_step(current_step);
+  }
+}
+
+function prevStep() {
+  if (current_step > 0) {
+    current_step--;
+    show_step(current_step);
+  }
+}
+
+// Initialize
+show_step(current_step);

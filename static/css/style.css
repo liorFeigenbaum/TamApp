@@ -100,3 +100,27 @@ body {
   padding: 6px;
   width: 60%;
 }
+
+.sink-source-item {
+  padding: 6px;
+  margin: 5px 0;
+  align: left;
+}
+
+.checkbox {
+  width: 20%;
+}
+
+.form-step {
+  display: none;
+}
+
+.form-step.active {
+  display: block;
+}
+
+.nav-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
