@@ -1,11 +1,15 @@
+import io
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
+import datetime
+
+import yaml
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
 
 from werkzeug.utils import secure_filename
 
 from toll_box.jsons import pretty_print_json
 from toll_box.logs import start_log
-
+from scripts.config_yaml import creat
 from scripts.config_yaml_validation.config_validator import validate_config_yaml
 
 app = Flask(__name__)
@@ -17,6 +21,11 @@ ALLOWED_EXTENSIONS = {"yaml", "yml"}
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+class IndentDumper(yaml.SafeDumper):
+	def increase_indent(self, flow=False, indentless=False):
+		return super().increase_indent(flow, False)
 
 
 def allowed_file(filename):
@@ -32,18 +41,33 @@ def home():
 def config():
 	if request.method == "POST":
 		submitted_config = request.form.to_dict(flat=False)
-		pretty_print_json(submitted_config)
-		# print(submitted_config)
-	
+		
+		config_dict = creat.main(submitted_config)
+		
+		yaml_config = yaml.dump(config_dict, Dumper=IndentDumper, sort_keys=False, default_flow_style=False, indent=2,
+														allow_unicode=True, )
+		
+		session["config_yaml"] = yaml_config
+		session["wizard_data"] = submitted_config
+		
+		return redirect(url_for("preview"))
 	# if submitted_config:
 	return render_template("config.html")
+
+
+@app.route("/preview")
+def preview():
+	yaml_text = session.get("config_yaml")
+	if not yaml_text:
+		return redirect(url_for("config"))
+	
+	return render_template("preview.html", yaml_text=yaml_text)
 
 
 @app.route("/mapper", methods=["GET", "POST"])
 def mapper():
 	if request.method == "POST":
 		submitted_data = request.form.getlist("data[]")
-		print(submitted_data)
 		return render_template("mapper.html", submitted_data=submitted_data)
 	return render_template("mapper.html", submitted_data=None)
 
@@ -78,10 +102,10 @@ def config_validator():
 			error = result["error"]
 		else:
 			submitted_data = "Config file is valid ✅"
-			if result["tam"]:
-				warning = result["warning"]
-			if result["skip_calc"]:
-				skip_watning = result["skip_calc"]
+			if result.get("tam"):
+				warning = result.get("warning")
+			if result.get("skip_calc"):
+				skip_watning = result.get("skip_calc")
 	
 	return render_template(
 		"configV.html",
@@ -100,6 +124,26 @@ def back():
 		os.remove(filepath)
 	
 	return redirect(url_for("home"))
+
+
+@app.route("/download", methods=["POST"])
+def download():
+	yaml_text = session.get("config_yaml")
+	if not yaml_text:
+		return redirect(url_for("home"))
+	
+	filename = f"config_{datetime.date.today()}.yaml"
+	
+	# clear wizard state
+	session.pop("config_yaml", None)
+	session.pop("wizard_data", None)
+	
+	return send_file(
+		io.BytesIO(yaml_text.encode("utf-8")),
+		mimetype="application/x-yaml",
+		as_attachment=True,
+		download_name=filename
+		)
 
 
 # @app.route("/contact", methods=["GET", "POST"])

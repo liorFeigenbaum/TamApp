@@ -2,18 +2,18 @@
 
 
 h1, h2, h3, h4 {
-	color: #f8f8f8;	
+	color: #f8f8f8;
 }
 
 /*a {
 	color: #f8f8f8;
-	
+
 }*/
 
 body {
-	font-family: 'Poppins', sans-serif;
-	background: #1F6C6D;
-	margin: 20px;
+  font-family: 'Poppins', sans-serif;
+  background: #1F6C6D;
+  margin: 20px;
 }
 
 /* Button Styling */

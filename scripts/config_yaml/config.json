@@ -87,6 +87,7 @@
 		"deleted.sql"
 	],
 	"source_connection[]": [
+		"file",
 		"client-db",
 		"client-db",
 		"client-db",
