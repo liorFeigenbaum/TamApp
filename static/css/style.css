@@ -101,6 +101,21 @@ body {
   width: 60%;
 }
 
+.input-block textarea {
+    width: 100%;
+    font-family: "JetBrains Mono", "Fira Code", Consolas, Monaco, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+
+    white-space: pre;
+    tab-size: 4;
+
+    border-radius: 6px;
+    border: 1px solid #ccc;
+
+    resize: vertical;
+}
+
 .sink-source-item {
   padding: 6px;
   margin: 5px 0;

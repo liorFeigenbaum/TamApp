@@ -7,7 +7,7 @@
 		</head>
 		<body>
 				<h1>config.yaml generator</h1>
-				<form method="POST" id="wizardForm">
+				<form method="POST" id="wizardForm" enctype="multipart/form-data">
 						<div class="form-step active">
 								
 								<!--						CLIENTS					-->
@@ -32,8 +32,10 @@
 										<option value="s3">s3</option>
 										<option value="database">data base</option>
 										<option value="ftp">ftp</option>
-										<option value="vpn">vpn</option>
+										<option value="http">http</option>
 										<option value="snowflake">snowflake</option>
+										<option value="bigquery">bigquery</option>
+										<option value="vpn">vpn</option>
 								</select>
 								<button type="button" onclick="add_configuration()">Add</button>
 								<div id="block_s3">
@@ -59,8 +61,10 @@
 								</div>
 								<div id="block_database"></div>
 								<div id="block_ftp"></div>
-								<div id="block_vpn"></div>
+								<div id="block_http"></div>
 								<div id="block_snowflake"></div>
+								<div id="block_bigquery"></div>
+								<div id="block_vpn"></div>
 								<div class="nav-buttons">
 										<button type="button" onclick="prevStep()">← Back</button>
 										<button type="button" onclick="nextStep()">Next →</button>
@@ -75,7 +79,7 @@
 								<div id="blockSources" class="two-columns">
 										<div id="mapper" class="input-block">
 												<label>Name:</label><input type="text" name="source_name[]" value="input_file_mapper.yml" radonly><br>
-												<label>Type:</label><input type="text" name="source_type[]" value="file" radonly><br>
+												<label>Type:</label><input type="text" name="source_type[]" value="file" readonly><br>
 												<label>File
 															 Name:</label><input type="text" name="source_path[]" value="input_file_mapper.yml" radonly><br>
 										</div>
@@ -104,11 +108,11 @@
 										<label>Name:</label><input type="text" name="sink_name" placeholder="input_files"><br>
 										
 										<label>Sources:</label><br>
-										<div id="sink_sources_list" ></div>
+										<div id="sink_sources_list"></div>
 										<br>
 										
 										<label>Transforms:</label><br>
-										<div id="sink_transforms_list" ></div>
+										<div id="sink_transforms_list"></div>
 										<br>
 										
 										<label> file name:</label>

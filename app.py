@@ -22,6 +22,9 @@ ALLOWED_EXTENSIONS = {"yaml", "yml"}
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+CREDENTIALS_FOLDER = "out_put/credentials"
+os.makedirs(CREDENTIALS_FOLDER, exist_ok=True)
+
 
 class IndentDumper(yaml.SafeDumper):
 	def increase_indent(self, flow=False, indentless=False):

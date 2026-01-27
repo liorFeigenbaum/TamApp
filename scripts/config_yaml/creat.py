@@ -49,8 +49,6 @@ def get_sources(config_json):
 	path = config_json['source_path[]']
 	connection = config_json['source_connection[]']
 	
-	print(paths)
-	print(connections)
 	
 	for x in range(len(names)):
 		name = names[x]
@@ -58,10 +56,10 @@ def get_sources(config_json):
 		sources[name]['type'] = types[x]
 		if types[x] == 'file':
 			sources[name]['connections'] = 'file'
-			connections.insert(x, 'file')
+			connection.insert(x, 'file')
 		else:
-			sources[name]['connections'] = connections[x]
-		sources[name]['path'] = paths[x]
+			sources[name]['connections'] = connection[x]
+		sources[name]['path'] = path[x]
 	
 	for key in keys_to:
 		config_json.pop(key, None)
