@@ -3,7 +3,7 @@ import os
 import datetime
 
 import yaml
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, make_response
 
 from werkzeug.utils import secure_filename
 
@@ -47,22 +47,44 @@ def config():
 		
 		config_dict = creat.main(submitted_config)
 		
-		yaml_config = yaml.dump(config_dict, Dumper=IndentDumper, sort_keys=False, default_flow_style=False, indent=2,
-														allow_unicode=True, )
+		yaml_config = yaml.dump(
+			config_dict,
+			Dumper=IndentDumper,
+			sort_keys=False,
+			default_flow_style=False,
+			indent=2,
+			allow_unicode=True,
+		)
 		
 		session["config_yaml"] = yaml_config
 		session["wizard_data"] = submitted_config
 		
 		return redirect(url_for("preview"))
 	# if submitted_config:
-	return render_template("config.html")
+	existing_data = session.get("wizard_data", {})
+	return render_template("config.html", data=existing_data)
 
 
 @app.route("/preview")
 def preview():
-	yaml_text = session.get("config_yaml")
-	if not yaml_text:
+	wizard_data = session.get("wizard_data")
+	if not wizard_data:
 		return redirect(url_for("config"))
+	
+	# Rebuild YAML from saved wizard data
+	config_dict = creat.main(wizard_data)
+
+	yaml_text = yaml.dump(
+			config_dict,
+			Dumper=IndentDumper,
+			sort_keys=False,
+			default_flow_style=False,
+			indent=2,
+			allow_unicode=True,
+	)
+
+	# (Optional) keep it in session if download uses it directly
+	session["config_yaml"] = yaml_text
 	
 	return render_template("preview.html", yaml_text=yaml_text)
 
@@ -129,24 +151,22 @@ def back():
 	return redirect(url_for("home"))
 
 
-@app.route("/download", methods=["POST"])
+@app.route("/download")
 def download():
 	yaml_text = session.get("config_yaml")
 	if not yaml_text:
 		return redirect(url_for("home"))
 	
-	filename = f"config_{datetime.date.today()}.yaml"
-	
-	# clear wizard state
+	# 🔹 Create a Flask response for file download
+	response = make_response(yaml_text)
+	response.headers["Content-Disposition"] = "attachment; filename=config.yaml"
+	response.headers["Content-Type"] = "text/yaml"
+
+	# 🔹 Clear wizard session after download
 	session.pop("config_yaml", None)
 	session.pop("wizard_data", None)
 	
-	return send_file(
-		io.BytesIO(yaml_text.encode("utf-8")),
-		mimetype="application/x-yaml",
-		as_attachment=True,
-		download_name=filename
-		)
+	return response
 
 
 # @app.route("/contact", methods=["GET", "POST"])

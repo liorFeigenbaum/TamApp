@@ -14,9 +14,7 @@
 						<button type="submit">⬇ Download</button>
 				</form>
 				
-				<form method="get" action="{{ url_for('config') }}">
-						<button type="submit">⬅ Back to edit</button>
-				</form>
+				<a href="{{ url_for('config') }}" >⬅ Back to edit</a>
 				
 				<form method="get" action="{{ url_for('home') }}">
             <button type="submit">🏠 Back to home</button>

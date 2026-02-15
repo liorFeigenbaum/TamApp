@@ -46,6 +46,7 @@ def get_sources(config_json):
 	keys_to = [key for key in config_json.keys() if key.startswith("source_")]
 	names = config_json['source_name[]']
 	types = config_json['source_type[]']
+	time_offset = config_json['source_time_offset[]']
 	path = config_json['source_path[]']
 	connection = config_json['source_connection[]']
 	
@@ -63,6 +64,10 @@ def get_sources(config_json):
 	
 	for key in keys_to:
 		config_json.pop(key, None)
+	
+	for source in sources.keys():
+		if 'time_offset' in sources[source] and sources[source]['time_offset'] == 0:
+			sources[source].pop('time_offset')
 	
 	return sources
 
