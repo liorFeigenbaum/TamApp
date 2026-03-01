@@ -1,72 +1,78 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dynamic Blocks</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            margin: 20px;
-        }
-        .input-block {
-            border: 1px solid #ccc;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
-            background-color: #f9f9f9;
-        }
-        .input-block input {
-            margin: 5px 0;
-            padding: 6px;
-            width: 100%;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Input File Mapper — TAM App</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 <body>
 
-<h2>Add Data Blocks</h2>
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+  <div class="topbar-nav">
+    <a href="/">Home</a>
+    <a href="/config">Generator</a>
+    <a href="/configV">Validator</a>
+  </div>
+</nav>
 
-<!-- Dropdown + Add Button -->
-<select id="blockType">
-    <option value="text">Text</option>
-    <option value="email">Email</option>
-</select>
-<button type="button" onclick="addBlock()">Add</button>
+<div class="page-wrapper">
 
-<!-- Form to submit the data -->
-<form method="POST">
-    <div id="blockContainer"></div>
-    <button type="submit">Submit All</button>
-</form>
+  <div class="page-header">
+    <h1>Input File Mapper</h1>
+    <p>Define data blocks to build your input_file_mapper.yml.</p>
+  </div>
 
-{% if submitted_data %}
-    <h3>Submitted Data:</h3>
-    <ul>
-        {% for item in submitted_data %}
-            <li>{{ item }}</li>
-        {% endfor %}
+  <div class="add-block-row">
+    <select id="blockType">
+      <option value="text">Text</option>
+      <option value="email">Email</option>
+    </select>
+    <button type="button" class="btn" onclick="addBlock()">+ Add Block</button>
+  </div>
+
+  <form method="POST">
+    <div id="blockContainer" class="two-columns"></div>
+    <div class="nav-buttons" style="border-top:1px solid var(--color-border);margin-top:24px;padding-top:20px;">
+      <a href="/" class="btn btn-ghost">← Back to Home</a>
+      <button type="submit" class="btn btn-primary">Generate Mapper</button>
+    </div>
+  </form>
+
+  {% if submitted_data %}
+  <div style="margin-top:32px;">
+    <div class="section-label"><h2>Submitted Data</h2></div>
+    <ul style="color:var(--color-gray-light);padding-left:20px;">
+      {% for item in submitted_data %}
+      <li>{{ item }}</li>
+      {% endfor %}
     </ul>
-{% endif %}
+  </div>
+  {% endif %}
 
-		<script>
-		function addBlock() {
-		    const type = document.getElementById("blockType").value;
-		    const container = document.getElementById("blockContainer");
+</div>
 
-		    const block = document.createElement("div");
-		    block.className = "input-block";
+<script>
+function addBlock() {
+  const type = document.getElementById("blockType").value;
+  const container = document.getElementById("blockContainer");
 
-		    let inputType = "text";
-		    if (type === "email") inputType = "email";
+  const block = document.createElement("div");
+  block.className = "input-block";
 
-		    block.innerHTML = `
-		        <label>${type.charAt(0).toUpperCase() + type.slice(1)}:</label>
-		        <input type="${inputType}" name="data[]" placeholder="Enter ${type}">
-		    `;
+  const label = type.charAt(0).toUpperCase() + type.slice(1);
+  block.innerHTML = `
+    <label>${label}</label>
+    <input type="${type === 'email' ? 'email' : 'text'}" name="data[]" placeholder="Enter ${type}">
+  `;
 
-		    container.appendChild(block);
-		}
-		</script>
+  container.appendChild(block);
+}
+</script>
 
 </body>
 </html>

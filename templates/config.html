@@ -1,161 +1,241 @@
 <!DOCTYPE html>
 <html lang="en">
-		<head>
-				<meta charset="UTF-8">
-				<title>config.yaml</title>
-				<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-		</head>
-		<body>
-				<h1>config.yaml generator</h1>
-				<form method="POST" id="wizardForm" enctype="multipart/form-data">
-						<div class="form-step active">
-								
-								<!--						CLIENTS					-->
-								<h2>Client</h2>
-								<div id="client" class="input-block">
-										<label>Name:</label><input type="text" id="client_name_input" name="client_name"
-																							 placeholder="Client's name"><br>
-										<label>AVO
-													 ID:</label><input type="text" id="avo_id_input" name="client_id"
-																						 placeholder="Client's AVO id"><br>
-								</div>
-								<div class="nav-buttons">
-										<button type="button" onclick="window.location.href='/'">← Back</button>
-										<button type="button" onclick="nextStep()">Next →</button>
-								</div>
-						</div>
-						
-						<!--						CONNECTIONS					-->
-						<div class="form-step">
-								<h2>connections</h2>
-								<select id="blockType">
-										<option value="s3">s3</option>
-										<option value="database">data base</option>
-										<option value="ftp">ftp</option>
-										<option value="http">http</option>
-										<option value="snowflake">snowflake</option>
-										<option value="bigquery">bigquery</option>
-										<option value="vpn">vpn</option>
-								</select>
-								<button type="button" onclick="add_configuration()">Add</button>
-								<div id="block_s3">
-										<h4>S3 Configuration</h4>
-										<div class="two-columns">
-												<div class="input-block" id="s3_tam">
-														<label>Name:</label>
-														<input type="text" name="s3_name[]" value="tam-s3" readonly><br>
-														<label>Type:</label>
-														<input type="text" name="s3_type[]" value="s3" readonly><br>
-														<label>Bucket:</label>
-														<input type="text" name="s3_bucket[]" value="onebeat-tam" readonly><br>
-												</div>
-												<div class="input-block" id="s3_api">
-														<label>Name:</label>
-														<input type="text" name="s3_name[]" value="onebeat-api-v-s3" readonly><br>
-														<label>Type:</label>
-														<input type="text" name="s3_type[]" value="s3" readonly><br>
-														<label>Bucket:</label>
-														<input type="text" name="s3_bucket[]" value="onebeat-api-validation" readonly><br>
-												</div>
-										</div>
-								</div>
-								<div id="block_database"></div>
-								<div id="block_ftp"></div>
-								<div id="block_http"></div>
-								<div id="block_snowflake"></div>
-								<div id="block_bigquery"></div>
-								<div id="block_vpn"></div>
-								<div class="nav-buttons">
-										<button type="button" onclick="prevStep()">← Back</button>
-										<button type="button" onclick="nextStep()">Next →</button>
-								</div>
-						</div>
-						
-						<!--						SOURCES					-->
-						<div class="form-step">
-								<h2>sources</h2>
-								<select id="source_connection_selector"></select>
-								<button type="button" onclick="add_source('blockSources')">Add Source</button>
-								<div id="blockSources" class="two-columns">
-										<div id="mapper" class="input-block">
-												<label>Name:</label><input type="text" name="source_name[]" value="input_file_mapper.yml" radonly><br>
-												<label>Type:</label><input type="text" name="source_type[]" value="file" readonly><br>
-												<label>File
-															 Name:</label><input type="text" name="source_path[]" value="input_file_mapper.yml" radonly><br>
-										</div>
-								</div>
-								<div class="nav-buttons">
-										<button type="button" onclick="prevStep()">← Back</button>
-										<button type="button" onclick="nextStep()">Next →</button>
-								</div>
-						</div>
-						
-						<!--						TRANSFORMS					-->
-						<div class="form-step">
-								<h2>transforms</h2>
-								<button type="button" onclick="add_transform()">Add Source</button>
-								<div id="blockTransforms" class="two-columns"></div>
-								<div class="nav-buttons">
-										<button type="button" onclick="prevStep()">← Back</button>
-										<button type="button" onclick="nextStep()">Next →</button>
-								</div>
-						</div>
-						
-						<!--						SINKS					-->
-						<div class="form-step">
-								<h2>sinks</h2>
-								<div id="sink" class="input-block">
-										<label>Name:</label><input type="text" name="sink_name" placeholder="input_files"><br>
-										
-										<label>Sources:</label><br>
-										<div id="sink_sources_list"></div>
-										<br>
-										
-										<label>Transforms:</label><br>
-										<div id="sink_transforms_list"></div>
-										<br>
-										
-										<label> file name:</label>
-										<select id="filename" name="sink_file_name">
-												<option
-															value="uploads/accounts/{client}/{client}_input_data_%Y_%m_%d"
-															data-template="uploads/accounts/{client}/{client}_input_data_%Y_%m_%d">
-														uploads/accounts/{client}/{client}_input_data_%Y_%m_%d
-												</option>
-												<option
-															value="uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d"
-															data-template="uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d">
-														uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d
-												</option>
-										</select><br>
-										<label> connections:</label>
-										<select id="sink_connection_selector" name="sink_connection_selector"></select>
-								
-								
-								</div>
-								
-								<div class="nav-buttons">
-										<button type="button" onclick="prevStep()">← Back</button>
-										<button type="submit">Submit</button>
-								</div>
-						</div>
-				</form>
-				
-				{% if submitted_config %}
-				<h3>Submitted Data:</h3>
-				<ul>
-						{% for item in submitted_config %}
-						<li>{{ item }}</li>
-						{% endfor %}
-				</ul>
-				{% endif %}
-				
-				<script src="{{ url_for('static', filename='js/config.js') }}"></script>
-		
-		</body>
-		<style>
-				body {
-						font-family: 'Poppins', sans-serif;
-				}
-		</style>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>config.yaml Generator — TAM App</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+  <div class="topbar-nav">
+    <a href="/">Home</a>
+    <a href="/configV">Validator</a>
+    <a href="/mapper">Mapper</a>
+  </div>
+</nav>
+
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <h1>config.yaml Generator</h1>
+    <p>Complete each step to build your configuration file.</p>
+  </div>
+
+  <!-- Step Indicator -->
+  <div class="step-indicator" id="stepIndicator">
+    <div class="step-dot active" id="dot-1">1</div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step-dot" id="dot-2">2</div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step-dot" id="dot-3">3</div>
+    <div class="step-line" id="line-3"></div>
+    <div class="step-dot" id="dot-4">4</div>
+    <div class="step-line" id="line-4"></div>
+    <div class="step-dot" id="dot-5">5</div>
+  </div>
+
+  <form method="POST" id="wizardForm" enctype="multipart/form-data">
+
+    <!-- ── Step 1: Client ── -->
+    <div class="form-step active" id="step-1">
+      <div class="section-label"><h2>Client</h2></div>
+
+      <div class="input-block">
+        <label>Name</label>
+        <input type="text" id="client_name_input" name="client_name" placeholder="Client's name"
+               value="{{ data.get('client_name', [''])[0] }}">
+        <label>AVO ID</label>
+        <input type="text" id="avo_id_input" name="client_id" placeholder="Client's AVO ID"
+               value="{{ data.get('client_id', [''])[0] }}">
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-ghost" onclick="window.location.href='/'">← Back to Home</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Next →</button>
+      </div>
+    </div>
+
+    <!-- ── Step 2: Connections ── -->
+    <div class="form-step" id="step-2">
+      <div class="section-label"><h2>Connections</h2></div>
+
+      <div class="add-block-row">
+        <select id="blockType">
+          <option value="s3">S3</option>
+          <option value="database">Database</option>
+          <option value="ftp">FTP</option>
+          <option value="http">HTTP</option>
+          <option value="snowflake">Snowflake</option>
+          <option value="bigquery">BigQuery</option>
+          <option value="vpn">VPN</option>
+        </select>
+        <button type="button" class="btn" onclick="add_configuration()">+ Add Connection</button>
+      </div>
+
+      <div id="block_s3">
+        <div style="margin-bottom:8px;color:var(--color-gray);font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">S3 — Default Buckets</div>
+        <div class="two-columns">
+          <div class="input-block" id="s3_tam">
+            <label>Name</label>
+            <input type="text" name="s3_name[]" value="tam-s3" readonly>
+            <label>Type</label>
+            <input type="text" name="s3_type[]" value="s3" readonly>
+            <label>Bucket</label>
+            <input type="text" name="s3_bucket[]" value="onebeat-tam" readonly>
+          </div>
+          <div class="input-block" id="s3_api">
+            <label>Name</label>
+            <input type="text" name="s3_name[]" value="onebeat-api-v-s3" readonly>
+            <label>Type</label>
+            <input type="text" name="s3_type[]" value="s3" readonly>
+            <label>Bucket</label>
+            <input type="text" name="s3_bucket[]" value="onebeat-api-validation" readonly>
+          </div>
+        </div>
+      </div>
+
+      <div id="block_database"></div>
+      <div id="block_ftp"></div>
+      <div id="block_http"></div>
+      <div id="block_snowflake"></div>
+      <div id="block_bigquery"></div>
+      <div id="block_vpn"></div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-ghost" onclick="prevStep()">← Back</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Next →</button>
+      </div>
+    </div>
+
+    <!-- ── Step 3: Sources ── -->
+    <div class="form-step" id="step-3">
+      <div class="section-label"><h2>Sources</h2></div>
+
+      <div class="add-block-row">
+        <select id="source_connection_selector"></select>
+        <button type="button" class="btn" onclick="add_source('blockSources')">+ Add Source</button>
+      </div>
+
+      <div id="blockSources" class="two-columns">
+        <div id="mapper" class="input-block">
+          <label>Name</label>
+          <input type="text" name="source_name[]" value="input_file_mapper.yml" readonly>
+          <label>Type</label>
+          <input type="text" name="source_type[]" value="file" readonly>
+          <label>File Name</label>
+          <input type="text" name="source_path[]" value="input_file_mapper.yml" readonly>
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-ghost" onclick="prevStep()">← Back</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Next →</button>
+      </div>
+    </div>
+
+    <!-- ── Step 4: Transforms ── -->
+    <div class="form-step" id="step-4">
+      <div class="section-label"><h2>Transforms</h2></div>
+
+      <div class="add-block-row">
+        <button type="button" class="btn" onclick="add_transform()">+ Add Transform</button>
+      </div>
+
+      <div id="blockTransforms" class="two-columns"></div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-ghost" onclick="prevStep()">← Back</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Next →</button>
+      </div>
+    </div>
+
+    <!-- ── Step 5: Sinks ── -->
+    <div class="form-step" id="step-5">
+      <div class="section-label"><h2>Sink</h2></div>
+
+      <div class="input-block" id="sink">
+        <label>Name</label>
+        <input type="text" name="sink_name" placeholder="input_files"
+               value="{{ data.get('sink_name', [''])[0] }}">
+
+        <label>Sources</label>
+        <div id="sink_sources_list"></div>
+
+        <label>Transforms</label>
+        <div id="sink_transforms_list"></div>
+
+        <label>File Name</label>
+        <select id="filename" name="sink_file_name">
+          <option
+            value="uploads/accounts/{client}/{client}_input_data_%Y_%m_%d"
+            data-template="uploads/accounts/{client}/{client}_input_data_%Y_%m_%d">
+            uploads/accounts/{client}/{client}_input_data_%Y_%m_%d
+          </option>
+          <option
+            value="uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d"
+            data-template="uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d">
+            uploads/accounts/{avo_id}/{client}_input_data_%Y_%m_%d
+          </option>
+        </select>
+
+        <label>Connection</label>
+        <select id="sink_connection_selector" name="sink_connection_selector"></select>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-ghost" onclick="prevStep()">← Back</button>
+        <button type="submit" class="btn btn-primary">Generate config.yaml</button>
+      </div>
+    </div>
+
+  </form>
+
+  {% if submitted_config %}
+  <div style="margin-top:32px;">
+    <div class="section-label"><h2>Submitted Data</h2></div>
+    <ul style="color:var(--color-gray-light);padding-left:20px;">
+      {% for item in submitted_config %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Inject saved wizard data for form restoration -->
+<script>
+  const WIZARD_DATA = {{ data | tojson }};
+</script>
+
+<script src="{{ url_for('static', filename='js/config.js') }}"></script>
+<script>
+  // ── Step indicator ──────────────────────────────────────────────
+  const totalSteps = 5;
+  let currentStepIndex = 1;
+
+  function updateStepIndicator(step) {
+    for (let i = 1; i <= totalSteps; i++) {
+      const dot = document.getElementById('dot-' + i);
+      dot.className = i < step ? 'step-dot done' : i === step ? 'step-dot active' : 'step-dot';
+      if (i < totalSteps) {
+        document.getElementById('line-' + i).className = i < step ? 'step-line done' : 'step-line';
+      }
+    }
+    currentStepIndex = step;
+  }
+
+  const origNext = window.nextStep;
+  const origPrev = window.prevStep;
+  window.nextStep = function() { origNext && origNext(); updateStepIndicator(currentStepIndex + 1); };
+  window.prevStep = function() { origPrev && origPrev(); updateStepIndicator(currentStepIndex - 1); };
+</script>
+
+</body>
 </html>

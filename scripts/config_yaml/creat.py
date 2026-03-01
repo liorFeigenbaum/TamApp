@@ -10,17 +10,17 @@ DEFAULT_FILE = os.path.join(os.getcwd(), "config.json")
 
 def get_transforms(config_json):
 	params = ['transform_name[]', 'transform_type[]', 'transform_file[]']
-	names = config_json['transform_name[]']
-	types = config_json['transform_type[]']
-	files = config_json['transform_file[]']
+	names = config_json.get('transform_name[]', [])
+	types = config_json.get('transform_type[]', [])
+	files = config_json.get('transform_file[]', [])
 	trnasforms = dict()
-	
+
 	for x in range(len(names)):
 		trnasforms[names[x]] = {'type': types[x], 'file': files[x]}
-	
+
 	for ket in params:
 		config_json.pop(ket, None)
-	
+
 	# print(trnasforms)
 	return trnasforms
 
@@ -29,9 +29,10 @@ def get_sink(config_json):
 	sinks = dict()
 	name = config_json['sink_name'][0]
 	sinks[name] = dict()
-	sinks[name]['sources'] = config_json["sink_sources[]"]
-	if len(config_json["sink_transform[]"]) > 0:
-		sinks[name]['transforms'] = config_json["sink_transform[]"]
+	sinks[name]['sources'] = config_json.get("sink_sources[]", [])
+	selected_transforms = config_json.get("sink_transform[]", [])
+	if len(selected_transforms) > 0:
+		sinks[name]['transforms'] = selected_transforms
 	sinks[name]['filename'] = config_json["sink_file_name"][0]
 	sinks[name]['connections'] = [config_json["sink_connection_selector"][0]]
 	sink_keys = [key for key in config_json.keys() if 'sink_' in key]

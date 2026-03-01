@@ -1,24 +1,64 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-		<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-		<title>Home</title>
-		<!--        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">-->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TAM App — OneBeat</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
 <body>
-<!--<h1>Welcome to the TAM app!</h1>-->
-<div class="Container">
-		<h1>Welcome to the TAM app!</h1>
+
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+  <div class="topbar-nav">
+    <a href="/catalogs">Catalogs</a>
+    <a href="/inventories">Inventories</a>
+    <a href="/locations">Locations</a>
+    <a href="/transactions">Transactions</a>
+  </div>
+</nav>
+
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1>Configuration Tools</h1>
+    <p>Generate, validate, and manage your TAM configuration files.</p>
+  </div>
+
+  <div class="home-grid">
+
+    <a class="home-card" href="/config">
+      <div class="home-card-icon">⚙️</div>
+      <div class="home-card-title">config.yaml Generator</div>
+      <div class="home-card-desc">Build a config.yaml file step-by-step using the wizard.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+    <a class="home-card" href="/mapper">
+      <div class="home-card-icon">🗺️</div>
+      <div class="home-card-title">Input File Mapper</div>
+      <div class="home-card-desc">Generate an input_file_mapper.yml from your data definitions.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+    <a class="home-card" href="/configV">
+      <div class="home-card-icon">✅</div>
+      <div class="home-card-title">config.yaml Validator</div>
+      <div class="home-card-desc">Upload and validate an existing config.yaml file.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+    <a class="home-card" href="/mapper">
+      <div class="home-card-icon">🔍</div>
+      <div class="home-card-title">Mapper Validator</div>
+      <div class="home-card-desc">Validate an input_file_mapper.yml configuration.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+  </div>
 </div>
-<button class="btn"><a href="/config">config.yaml generator</a></button>
-<p><button class="btn"><a href="/mapper">input_file_mapper.yml generator</a></button></p>
-<p><button class="btn"><a href="/configV">config.yaml validator</a></button></p>
-<p><button class="btn"><a href="/mapper">input_file_mapper.yml validator</a></button></p>
-<!--<p><a href="/mapper">Go to input_file_mapper.yml</a></p>-->
-<p><a href="/catalogs">Go to catalogs.py</a></p>
-<p><a href="/inventories">Go to inventories.py</a></p>
-<p><a href="/locations">Go to locations.py</a></p>
-<p><a href="/transactions">Go to transactions.py</a></p>
+
 </body>
 </html>
-

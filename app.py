@@ -1,5 +1,7 @@
 import io
 import os
+import shutil
+import uuid
 import datetime
 
 import yaml
@@ -22,8 +24,22 @@ ALLOWED_EXTENSIONS = {"yaml", "yml"}
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-CREDENTIALS_FOLDER = "out_put/credentials"
-os.makedirs(CREDENTIALS_FOLDER, exist_ok=True)
+
+def get_session_dir():
+	"""Return (and create) a per-session subdirectory under out_put/."""
+	if 'uid' not in session:
+		session['uid'] = uuid.uuid4().hex
+	path = os.path.join(UPLOAD_FOLDER, session['uid'])
+	os.makedirs(path, exist_ok=True)
+	return path
+
+
+def cleanup_session_dir():
+	"""Remove the per-session directory if it exists."""
+	uid = session.get('uid')
+	if uid:
+		path = os.path.join(UPLOAD_FOLDER, uid)
+		shutil.rmtree(path, ignore_errors=True)
 
 
 class IndentDumper(yaml.SafeDumper):
@@ -37,6 +53,10 @@ def allowed_file(filename):
 
 @app.route("/")
 def home():
+	cleanup_session_dir()
+	session.pop("wizard_data", None)
+	session.pop("config_yaml", None)
+	session.pop("uid", None)
 	return render_template("home.html")
 
 
@@ -115,7 +135,7 @@ def config_validator():
 		
 		else:
 			filename = secure_filename(file.filename)
-			filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+			filepath = os.path.join(get_session_dir(), filename)
 			file.save(filepath)
 			
 			# 🔑 store path in session
@@ -178,4 +198,5 @@ def download():
 
 if __name__ == "__main__":
 	start_log()
-	app.run(debug=True)  # Enables auto-reload and debug output
+	port = int(os.environ.get("PORT", 5001))
+	app.run(debug=True, port=port)  # Enables auto-reload and debug output

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "TamApp (Flask)",
+      "runtimeExecutable": "gunicorn",
+      "runtimeArgs": ["app:app", "--workers", "2", "--timeout", "120"],
+      "port": 5001
+    }
+  ]
+}

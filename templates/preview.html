@@ -1,25 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-		<head>
-				<title>config.yaml preview</title>
-				<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-		</head>
-		<body>
-				
-				<h1>config.yaml preview</h1>
-				
-				<pre class="input-block">{{ yaml_text }}</pre>
-				
-				<form method="post" action="{{ url_for('download') }}">
-						<button type="submit">⬇ Download</button>
-				</form>
-				
-				<a href="{{ url_for('config') }}" >⬅ Back to edit</a>
-				
-				<form method="get" action="{{ url_for('home') }}">
-            <button type="submit">🏠 Back to home</button>
-        </form>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>config.yaml Preview — TAM App</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
 
-		
-		</body>
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+  <div class="topbar-nav">
+    <a href="/">Home</a>
+    <a href="/config">Generator</a>
+    <a href="/configV">Validator</a>
+  </div>
+</nav>
+
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <h1>config.yaml Preview</h1>
+    <p>Review your generated configuration before downloading.</p>
+  </div>
+
+  <pre class="input-block">{{ yaml_text }}</pre>
+
+  <div class="nav-buttons" style="margin-top:24px;border-top:none;padding-top:0;">
+    <a href="{{ url_for('config') }}" class="btn btn-ghost">← Back to Edit</a>
+    <div style="display:flex;gap:12px;">
+      <form method="get" action="{{ url_for('home') }}" style="margin:0;">
+        <button type="submit" class="btn btn-ghost">🏠 Home</button>
+      </form>
+      <form method="get" action="{{ url_for('download') }}" style="margin:0;">
+        <button type="submit" class="btn btn-primary">⬇ Download config.yaml</button>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+</body>
 </html>

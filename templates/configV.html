@@ -1,47 +1,73 @@
 <!DOCTYPE html>
-<html>
-		<head>
-				<title>Config.yaml validator</title>
-				<link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-		</head>
-		<body>
-				
-				<h1>Config.yaml validator</h1>
-				
-				<form method="POST" enctype="multipart/form-data">
-						<input type="file" name="file" accept=".yaml,.yml" class="btn_sub" required>
-						<button class="btn_sub" type="submit">Validate</button>
-				</form>
-				
-				{% if error %}
-				<p>
-				<h2 style="color:red;">{{ error }}</h2>
-				</p>
-				{% endif %}
-				
-				{% if submitted_data %}
-				<p>
-				<h2 style="color:green;">{{ submitted_data }}</h2>
-				</p>
-				{% endif %}
-				
-				{% if warning %}
-				<p>
-				<h2 style="color:orange;">{{ warning }} </h2>
-				</p>
-				{% endif %}
-				
-				{% if skip_watning %}
-				<p>
-				<h2 style="color:orange;">{{ skip_watning }} </h2>
-				</p>
-				{% endif %}
-				
-				{% if submitted_data or error %}
-				<form method="POST" action="/back" style="margin-top:20px;">
-						<button class="btn_sub" type="submit">⬅ Back</button>
-				</form>
-				{% endif %}
-		</body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>config.yaml Validator — TAM App</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
 
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+  <div class="topbar-nav">
+    <a href="/">Home</a>
+    <a href="/config">Generator</a>
+    <a href="/mapper">Mapper</a>
+  </div>
+</nav>
+
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <h1>config.yaml Validator</h1>
+    <p>Upload a config.yaml file to validate its structure and contents.</p>
+  </div>
+
+  <div class="input-block" style="max-width:600px;">
+    <form method="POST" enctype="multipart/form-data">
+      <label>YAML File</label>
+      <input type="file" name="file" accept=".yaml,.yml" required style="margin-bottom:16px;">
+      <button class="btn btn-primary" type="submit">Validate File</button>
+    </form>
+  </div>
+
+  {% if error %}
+  <div class="msg-error" style="margin-top:20px;max-width:700px;">
+    <strong>Error:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  {% if submitted_data %}
+  <div class="msg-success" style="margin-top:20px;max-width:700px;">
+    <strong>Valid:</strong> {{ submitted_data }}
+  </div>
+  {% endif %}
+
+  {% if warning %}
+  <div class="msg-warning" style="margin-top:20px;max-width:700px;">
+    <strong>Warning:</strong> {{ warning }}
+  </div>
+  {% endif %}
+
+  {% if skip_watning %}
+  <div class="msg-warning" style="margin-top:20px;max-width:700px;">
+    <strong>Skip warning:</strong> {{ skip_watning }}
+  </div>
+  {% endif %}
+
+  {% if submitted_data or error %}
+  <div style="margin-top:24px;">
+    <form method="POST" action="/back">
+      <button class="btn btn-ghost" type="submit">← Validate Another File</button>
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+
+</body>
 </html>
