@@ -1,4 +1,10 @@
-out_put
+out_put/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.DS_Store
 
 scripts/config_yaml/config.yaml
 scripts/config_yaml/config.json
