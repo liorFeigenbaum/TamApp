@@ -13,13 +13,81 @@
     <span class="topbar-brand-dot"></span>
     TAM App
   </a>
-  <div class="topbar-nav">
-    <a href="/catalogs">Catalogs</a>
-    <a href="/inventories">Inventories</a>
-    <a href="/locations">Locations</a>
-    <a href="/transactions">Transactions</a>
+  <div class="topbar-nav" id="topbar-actions">
+    <button id="update-btn"
+            onclick="doUpdate()"
+            style="display:none; align-items:center; gap:7px;
+                   background:transparent; border:1.5px solid #1F6C6D;
+                   color:#1F6C6D; border-radius:8px; padding:6px 14px;
+                   font-size:0.82rem; font-weight:600; cursor:pointer;
+                   transition:background .18s,color .18s;">
+      <span id="update-icon">↑</span>
+      <span id="update-label">Update Available</span>
+      <span id="update-badge"
+            style="background:#FD604A; color:#fff; border-radius:999px;
+                   padding:1px 7px; font-size:0.72rem; font-weight:700;"></span>
+    </button>
   </div>
 </nav>
+
+<style>
+  #update-btn:hover:not(:disabled) { background:#1F6C6D; color:#fff; }
+  #update-btn:disabled { opacity:.6; cursor:default; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .u-spin { display:inline-block; animation:spin .8s linear infinite; }
+</style>
+
+<script>
+(function checkForUpdates() {
+  fetch('/git_check')
+    .then(r => r.json())
+    .then(d => {
+      if (d.has_updates) {
+        const btn   = document.getElementById('update-btn');
+        const badge = document.getElementById('update-badge');
+        badge.textContent = d.count === 1 ? '1 commit' : d.count + ' commits';
+        btn.style.display = 'flex';
+      }
+    })
+    .catch(() => { /* no git / network error — silent */ });
+})();
+
+function doUpdate() {
+  const btn   = document.getElementById('update-btn');
+  const label = document.getElementById('update-label');
+  const icon  = document.getElementById('update-icon');
+  const badge = document.getElementById('update-badge');
+
+  btn.disabled = true;
+  icon.className = 'u-spin';
+  icon.textContent = '↻';
+  label.textContent = 'Pulling updates…';
+  badge.textContent = '';
+
+  fetch('/git_update', { method: 'POST' })
+    .then(r => r.json().catch(() => ({ ok: true })))
+    .then(d => {
+      icon.className = '';
+      if (d.ok !== false) {
+        icon.textContent = '✓';
+        label.textContent = 'Done — reloading…';
+        // Give gunicorn time to restart, then reload
+        setTimeout(() => location.reload(), 3500);
+      } else {
+        icon.textContent = '✕';
+        label.textContent = 'Update failed';
+        btn.disabled = false;
+      }
+    })
+    .catch(() => {
+      // Network error means gunicorn restarted — good!
+      icon.className = '';
+      icon.textContent = '✓';
+      label.textContent = 'Done — reloading…';
+      setTimeout(() => location.reload(), 3500);
+    });
+}
+</script>
 
 <div class="page-wrapper">
   <div class="page-header">

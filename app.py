@@ -1,11 +1,15 @@
 import io
 import os
+import re
 import shutil
+import signal
+import subprocess
+import threading
 import uuid
 import datetime
 
 import yaml
-from flask import Flask, render_template, request, redirect, url_for, session, send_file, make_response
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, make_response, jsonify
 
 from werkzeug.utils import secure_filename
 
@@ -24,6 +28,16 @@ ALLOWED_EXTENSIONS = {"yaml", "yml"}
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Root of the git repository (same directory as this file)
+_REPO_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ── Startup: wipe all leftover per-session directories from previous runs ──
+_UUID_RE = re.compile(r'^[0-9a-f]{32}$')
+for _item in os.listdir(UPLOAD_FOLDER):
+	_item_path = os.path.join(UPLOAD_FOLDER, _item)
+	if os.path.isdir(_item_path) and _UUID_RE.match(_item):
+		shutil.rmtree(_item_path, ignore_errors=True)
 
 
 def get_session_dir():
@@ -54,10 +68,19 @@ def allowed_file(filename):
 
 @app.route("/")
 def home():
+	# Clean this session's files
 	cleanup_session_dir()
 	session.pop("wizard_data", None)
 	session.pop("config_yaml", None)
+	session.pop("uploaded_file", None)
 	session.pop("uid", None)
+
+	# Also purge any orphaned session directories left by other/previous sessions
+	for _item in os.listdir(UPLOAD_FOLDER):
+		_item_path = os.path.join(UPLOAD_FOLDER, _item)
+		if os.path.isdir(_item_path) and _UUID_RE.match(_item):
+			shutil.rmtree(_item_path, ignore_errors=True)
+
 	return render_template("home.html")
 
 
@@ -233,6 +256,75 @@ def download_validation_file(filename):
 #         name = request.form["name"]
 #         return f"<h2>Hello, {name}!</h2><p><a href='/contact'>Back</a></p>"
 #     return render_template("contact.html")
+
+
+# ── Git update routes ────────────────────────────────────────────────────────
+
+@app.route("/git_check")
+def git_check():
+	"""Return whether the remote has commits not yet in HEAD."""
+	try:
+		# Silently fetch (no output); ignore errors (e.g. no network)
+		subprocess.run(
+			["git", "fetch", "--quiet"],
+			cwd=_REPO_DIR, capture_output=True, timeout=10
+		)
+		result = subprocess.run(
+			["git", "rev-list", "--count", "HEAD..@{u}"],
+			cwd=_REPO_DIR, capture_output=True, text=True, timeout=5
+		)
+		count = int(result.stdout.strip() or "0")
+		return jsonify(has_updates=count > 0, count=count)
+	except Exception as e:
+		return jsonify(has_updates=False, count=0, error=str(e))
+
+
+def _reload_gunicorn_after(delay: float = 0.8):
+	"""Send SIGHUP to the gunicorn master so it gracefully reloads workers."""
+	def _do():
+		import time
+		time.sleep(delay)
+		port = int(os.environ.get("PORT", 5001))
+		try:
+			# Workers are listening on the port; the master is their parent
+			r = subprocess.run(
+				["lsof", "-i", f":{port}", "-sTCP:LISTEN", "-t"],
+				capture_output=True, text=True
+			)
+			worker_pids = [int(p) for p in r.stdout.split() if p.strip().isdigit()]
+			seen_masters = set()
+			for wpid in worker_pids:
+				pr = subprocess.run(
+					["ps", "-o", "ppid=", "-p", str(wpid)],
+					capture_output=True, text=True
+				)
+				ppid_str = pr.stdout.strip()
+				if ppid_str.isdigit():
+					master = int(ppid_str)
+					if master not in seen_masters:
+						seen_masters.add(master)
+						os.kill(master, signal.SIGHUP)
+		except Exception:
+			# Fallback: broadcast SIGHUP to any gunicorn process in this tree
+			subprocess.run(["pkill", "-HUP", "-f", "gunicorn"], capture_output=True)
+	threading.Thread(target=_do, daemon=True).start()
+
+
+@app.route("/git_update", methods=["POST"])
+def git_update():
+	"""Pull latest commits then gracefully reload gunicorn workers."""
+	try:
+		result = subprocess.run(
+			["git", "pull", "--ff-only"],
+			cwd=_REPO_DIR, capture_output=True, text=True, timeout=60
+		)
+		if result.returncode != 0:
+			return jsonify(ok=False, error=result.stderr.strip()), 500
+
+		_reload_gunicorn_after(delay=0.6)
+		return jsonify(ok=True, output=result.stdout.strip())
+	except Exception as e:
+		return jsonify(ok=False, error=str(e)), 500
 
 if __name__ == "__main__":
 	start_log()
