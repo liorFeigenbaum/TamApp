@@ -13,6 +13,7 @@ from toll_box.jsons import pretty_print_json
 from toll_box.logs import start_log
 from scripts.config_yaml import creat
 from scripts.config_yaml_validation.config_validator import validate_config_yaml
+from scripts.data_validation.validator import validate_zip
 
 app = Flask(__name__)
 
@@ -187,6 +188,43 @@ def download():
 	session.pop("wizard_data", None)
 	
 	return response
+
+
+@app.route("/data_validate", methods=["GET", "POST"])
+def data_validate():
+	result = None
+	error  = None
+
+	if request.method == "POST":
+		file = request.files.get("file")
+
+		if not file or file.filename == "":
+			error = "No file uploaded."
+		elif not file.filename.lower().endswith(".zip"):
+			error = "Please upload a .zip file."
+		else:
+			sdir = get_session_dir()
+			filename = secure_filename(file.filename)
+			filepath = os.path.join(sdir, filename)
+			file.save(filepath)
+			result = validate_zip(filepath, session_dir=sdir)
+			# Clean up the uploaded zip after processing
+			try:
+				os.remove(filepath)
+			except OSError:
+				pass
+
+	return render_template("data_validation.html", result=result, error=error)
+
+
+@app.route("/download_validation_file/<filename>")
+def download_validation_file(filename):
+	"""Serve a validation artefact (e.g. duplicates CSV) from the session directory."""
+	safe_name = secure_filename(filename)
+	filepath = os.path.join(get_session_dir(), safe_name)
+	if not os.path.exists(filepath):
+		return "File not found or session expired.", 404
+	return send_file(filepath, as_attachment=True, download_name=safe_name)
 
 
 # @app.route("/contact", methods=["GET", "POST"])

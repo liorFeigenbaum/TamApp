@@ -4,8 +4,8 @@
     {
       "name": "TamApp (Flask)",
       "runtimeExecutable": "gunicorn",
-      "runtimeArgs": ["app:app", "--workers", "2", "--timeout", "120"],
-      "port": 5001
+      "runtimeArgs": ["app:app", "--config", "gunicorn.conf.py"],
+      "autoPort": true
     }
   ]
 }
