@@ -277,7 +277,7 @@ ok "Icon compiled → $ICNS_PATH"
 # ══════════════════════════════════════════════════════════════════════════════
 # STEP 6 — Create Desktop shortcut
 # ══════════════════════════════════════════════════════════════════════════════
-step "Creating Desktop shortcut"
+step "Creating Desktop launcher"
 
 APP_PATH="$HOME/Desktop/TAM App.app"
 
@@ -307,16 +307,74 @@ cat > "$APP_PATH/Contents/Info.plist" <<PLIST_EOF
 PLIST_EOF
 
 # Launcher script (uses the user's own $HOME/TamApp)
-cat > "$APP_PATH/Contents/MacOS/launch" <<LAUNCH_EOF
+cat > "$APP_PATH/Contents/MacOS/launch" <<'LAUNCH_EOF'
 #!/bin/bash
+# Start the Flask server if not running, then focus or open the browser window
 PORT=3000
-if ! lsof -i :\$PORT -sTCP:LISTEN -t &>/dev/null; then
-  cd "\$HOME/TamApp"
+URL="http://localhost:$PORT"
+
+if ! lsof -i :$PORT -sTCP:LISTEN -t &>/dev/null; then
+  cd "$HOME/TamApp"
   source .venv/bin/activate 2>/dev/null || true
   nohup gunicorn --config gunicorn.conf.py app:app > /tmp/tamapp.log 2>&1 &
   sleep 2
 fi
-open "http://localhost:\$PORT"
+
+# Try to raise an existing window in Chrome or Safari; open a new one if none found
+osascript << EOF
+set targetURL to "$URL"
+set raised to false
+
+-- Try Google Chrome
+try
+  tell application "Google Chrome"
+    if it is running then
+      set ti to 0
+      repeat with w in windows
+        set ti to 1
+        repeat with t in tabs of w
+          if URL of t starts with targetURL then
+            set active tab index of w to ti
+            set index of w to 1
+            activate
+            set raised to true
+            exit repeat
+          end if
+          set ti to ti + 1
+        end repeat
+        if raised then exit repeat
+      end repeat
+    end if
+  end tell
+end try
+
+-- Try Safari
+if not raised then
+  try
+    tell application "Safari"
+      if it is running then
+        repeat with w in windows
+          repeat with t in tabs of w
+            if URL of t starts with targetURL then
+              set current tab of w to t
+              set index of w to 1
+              activate
+              set raised to true
+              exit repeat
+            end if
+          end repeat
+          if raised then exit repeat
+        end repeat
+      end if
+    end tell
+  end try
+end if
+
+-- No existing window found — open in default browser
+if not raised then
+  do shell script "open " & quoted form of targetURL
+end if
+EOF
 LAUNCH_EOF
 chmod +x "$APP_PATH/Contents/MacOS/launch"
 
@@ -330,7 +388,7 @@ xattr -cr "$APP_PATH" 2>/dev/null
 touch "$APP_PATH"
 killall Finder 2>/dev/null || true
 
-ok "TAM App shortcut created on your Desktop!"
+ok "TAM App launcher created on your Desktop!"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Done

@@ -471,6 +471,28 @@
           </div>
         {% endif %}
 
+        {# ── product_id color conflict rows (catalogs only) ── #}
+        {% if info.color_conflict_file is defined and info.color_conflict_file %}
+          <div style="margin-top:8px;">
+            <a class="btn btn-ghost"
+               href="{{ url_for('download_validation_file', filename=info.color_conflict_file) }}"
+               style="font-size:0.8rem; padding:6px 14px; display:inline-flex; align-items:center; gap:6px;">
+              ⬇ Download product color conflict rows CSV
+            </a>
+          </div>
+        {% endif %}
+
+        {# ── Duplicate product_id + size rows (catalogs only) ── #}
+        {% if info.size_dup_file is defined and info.size_dup_file %}
+          <div style="margin-top:8px;">
+            <a class="btn btn-ghost"
+               href="{{ url_for('download_validation_file', filename=info.size_dup_file) }}"
+               style="font-size:0.8rem; padding:6px 14px; display:inline-flex; align-items:center; gap:6px;">
+              ⬇ Download duplicate product/size rows CSV
+            </a>
+          </div>
+        {% endif %}
+
         {# ── Negative reserved_qty download link (inventories only) ── #}
         {% if info.reserved_qty_file is defined and info.reserved_qty_file %}
           <div style="margin-top:8px;">

@@ -36,6 +36,7 @@ TRANSACTIONS_MANDATORY_COLS = [
     ("target_location_id", "str"),
     ("quantity",           "float"),
     ("type",               "str"),
+    ("transaction_date",   "date"),
 ]
 
 TRANSACTION_VALID_TYPES = {"in", "out", "sale", "return"}
@@ -198,17 +199,34 @@ def _check_column_type(series, col_name, canonical, expected_type):
             })
 
     elif expected_type == "date":
-        converted = pd.to_datetime(non_null, errors="coerce")
-        bad_count = converted.isna().sum()
-        if bad_count:
-            bad_vals = non_null[converted.isna()].head(3).tolist()
+        # Enforce strict %Y-%m-%d format
+        _date_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+        str_vals = non_null.astype(str)
+        wrong_format = ~str_vals.str.match(_date_re)
+        wrong_count = wrong_format.sum()
+        if wrong_count:
+            bad_vals = str_vals[wrong_format].head(3).tolist()
             issues.append({
                 "level": "error",
                 "msg": (
-                    f'Column "{col_name}" (expected date) contains {bad_count:,} '
-                    f'unparseable value(s): {bad_vals}.'
+                    f'Column "{col_name}" (expected date) has {wrong_count:,} value(s) '
+                    f'not in YYYY-MM-DD format (e.g. {bad_vals}). '
+                    f'All dates must use the format "%Y-%m-%d".'
                 ),
             })
+        else:
+            # Format is correct — also validate that they are real calendar dates
+            converted = pd.to_datetime(non_null, format="%Y-%m-%d", errors="coerce")
+            bad_count = converted.isna().sum()
+            if bad_count:
+                bad_vals = non_null[converted.isna()].head(3).tolist()
+                issues.append({
+                    "level": "error",
+                    "msg": (
+                        f'Column "{col_name}" (expected date) contains {bad_count:,} '
+                        f'invalid date value(s): {bad_vals}.'
+                    ),
+                })
 
     return issues
 
@@ -314,6 +332,8 @@ def _validate_catalogs(zf, zip_names, session_dir=None):
         "nulls_file": None,
         "zero_values_file": None,
         "duplicates_file": None,
+        "color_conflict_file": None,
+        "size_dup_file": None,
         "_df": None,
     }
 
@@ -456,6 +476,92 @@ def _validate_catalogs(zf, zip_names, session_dir=None):
                     f'{mismatch_count:,} of {total:,} rows ({pct}%) have a product_id '
                     f'that does not contain the product\'s color value. '
                     f'product_id is expected to reference the color.'
+                ),
+            })
+
+    # ── Check 1: product_id color consistency ─────────────────────────────────
+    # All SKUs sharing the same product_id must have the same color.
+    if product_id_col and color_col and product_id_col in df.columns and color_col in df.columns:
+        sub = df[[product_id_col, color_col]].dropna(subset=[product_id_col])
+        color_groups = (
+            sub.groupby(product_id_col, sort=False)[color_col]
+            .apply(lambda s: sorted({str(v).strip() for v in s.dropna()}))
+        )
+        conflicts = color_groups[color_groups.apply(len) > 1]
+        if not conflicts.empty:
+            n = len(conflicts)
+            sample = list(conflicts.items())[:10]
+            details = "; ".join(
+                f'"{pid}" → [{", ".join(colors)}]'
+                for pid, colors in sample
+            )
+            if n > 10:
+                details += f" … and {n - 10} more"
+            result["issues"].append({
+                "level": "error",
+                "msg": (
+                    f'{n:,} product_id(s) have inconsistent colors — '
+                    f'all SKUs with the same product_id must share the same color. '
+                    f'Conflicts: {details}.'
+                ),
+            })
+            bad_pids = set(conflicts.index.astype(str))
+            bad_mask = df[product_id_col].astype(str).isin(bad_pids)
+            result["color_conflict_file"] = _write_csv(
+                df[bad_mask], session_dir,
+                f"product_color_conflict_{n}_product_ids.csv"
+            )
+
+    # ── Check 2: product_id + size uniqueness ─────────────────────────────────
+    # Each size value must appear at most once per product_id.
+    size_col = cols_lower_cat.get("size")
+    if product_id_col and size_col and product_id_col in df.columns and size_col in df.columns:
+        sub = df[[product_id_col, size_col]].dropna(subset=[product_id_col, size_col])
+        counts = sub.groupby([product_id_col, size_col]).size().reset_index(name="count")
+        dups = counts[counts["count"] > 1]
+        if not dups.empty:
+            n = len(dups)
+            sample = dups.head(10)
+            details = "; ".join(
+                f'"{row[product_id_col]}" has size "{row[size_col]}" × {row["count"]}'
+                for _, row in sample.iterrows()
+            )
+            if n > 10:
+                details += f" … and {n - 10} more"
+            result["issues"].append({
+                "level": "error",
+                "msg": (
+                    f'{n:,} product_id/size combination(s) duplicated — '
+                    f'each size must appear only once per product_id. '
+                    f'Duplicates: {details}.'
+                ),
+            })
+            bad_key_set = {
+                f"{p}\x00{s}"
+                for p, s in zip(dups[product_id_col].astype(str), dups[size_col].astype(str))
+            }
+            key_series = df[product_id_col].astype(str).str.cat(
+                df[size_col].astype(str), sep="\x00"
+            )
+            bad_mask = df[product_id_col].notna() & df[size_col].notna() & key_series.isin(bad_key_set)
+            result["size_dup_file"] = _write_csv(
+                df[bad_mask], session_dir,
+                f"duplicate_product_size_{n}_combinations.csv"
+            )
+
+    # ── Check 3: sku_id == product_id warning ─────────────────────────────────
+    if id_col and product_id_col and id_col in df.columns and product_id_col in df.columns:
+        both = df[id_col].notna() & df[product_id_col].notna()
+        eq_mask = both & (
+            df[id_col].astype(str).str.strip() == df[product_id_col].astype(str).str.strip()
+        )
+        eq_count = int(eq_mask.sum())
+        if eq_count:
+            result["issues"].append({
+                "level": "warning",
+                "msg": (
+                    f'{eq_count:,} row(s) where sku_id (id) equals product_id. '
+                    f'SKU IDs are typically distinct from product IDs.'
                 ),
             })
 
@@ -1047,20 +1153,77 @@ def _cross_validate(dfs, canonical_maps, session_dir):
             same_count = int(same_mask.sum())
             total = int(both.sum())
             if same_count:
-                pct = round(same_count / total * 100, 1) if total else 0
-                fname = _write_csv(
-                    inv_df[same_mask], session_dir,
-                    f"cross_inv_src_eq_loc_{same_count}_rows.csv"
+                same_rows    = inv_df[same_mask]
+                loc_type_col = loc_map.get("type")
+                loc_id_col_l = loc_map.get("id")
+                type_lookup_available = (
+                    loc_df is not None
+                    and loc_type_col and loc_id_col_l
+                    and loc_type_col in loc_df.columns
+                    and loc_id_col_l in loc_df.columns
                 )
-                issues.append({
-                    "level": "warning",
-                    "msg": (
-                        f'[Inventories] {same_count:,} of {total:,} rows ({pct}%) have '
-                        f'source_location_id == location_id. '
-                        f'These should be different locations.'
-                    ),
-                    "file": fname,
-                })
+
+                if type_lookup_available:
+                    # For each matching inventory row: take its location_id,
+                    # find the row in locations where locations.id == location_id,
+                    # and read the type.
+                    loc_type_series = (
+                        loc_df.drop_duplicates(subset=[loc_id_col_l])
+                        .set_index(loc_id_col_l)[loc_type_col]
+                        .astype(str).str.strip().str.lower()
+                    )
+                    matched_types = (
+                        same_rows[loc_col].astype(str).str.strip().map(loc_type_series)
+                    )
+                    is_wh        = matched_types == "warehouse"
+                    wh_count     = int(is_wh.sum())
+                    non_wh_count = same_count - wh_count
+
+                    # ⚠️ Non-warehouse locations are a real problem
+                    if non_wh_count:
+                        non_wh_rows = same_rows[~is_wh]
+                        pct = round(non_wh_count / total * 100, 1) if total else 0
+                        fname = _write_csv(
+                            non_wh_rows, session_dir,
+                            f"cross_inv_src_eq_loc_{non_wh_count}_rows.csv"
+                        )
+                        issues.append({
+                            "level": "warning",
+                            "msg": (
+                                f'[Inventories] {non_wh_count:,} of {total:,} rows ({pct}%) have '
+                                f'source_location_id == location_id for non-warehouse locations. '
+                                f'These should be different locations.'
+                            ),
+                            "file": fname,
+                        })
+                        # ℹ️ Mention warehouse rows only as extra context alongside real failures
+                        if wh_count:
+                            issues.append({
+                                "level": "info",
+                                "msg": (
+                                    f'[Inventories] Additionally, {wh_count:,} row(s) have '
+                                    f'source_location_id == location_id for warehouse-type locations '
+                                    f'— this is expected and acceptable for warehouses.'
+                                ),
+                                "file": None,
+                            })
+                    # If all matching rows are warehouse-type → nothing to report
+                else:
+                    # Location type data unavailable — original behaviour
+                    pct = round(same_count / total * 100, 1) if total else 0
+                    fname = _write_csv(
+                        same_rows, session_dir,
+                        f"cross_inv_src_eq_loc_{same_count}_rows.csv"
+                    )
+                    issues.append({
+                        "level": "warning",
+                        "msg": (
+                            f'[Inventories] {same_count:,} of {total:,} rows ({pct}%) have '
+                            f'source_location_id == location_id. '
+                            f'These should be different locations.'
+                        ),
+                        "file": fname,
+                    })
 
     # ── 2. Transactions date == Inventories status_date ───────────────────────
     if inv_df is not None and txn_df is not None:
