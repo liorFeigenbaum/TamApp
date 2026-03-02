@@ -316,8 +316,9 @@ URL="http://localhost:$PORT"
 if ! lsof -i :$PORT -sTCP:LISTEN -t &>/dev/null; then
   cd "$HOME/TamApp"
   source .venv/bin/activate 2>/dev/null || true
+  export PATH="$HOME/TamApp/.venv/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
   nohup gunicorn --config gunicorn.conf.py app:app > /tmp/tamapp.log 2>&1 &
-  sleep 2
+  sleep 3
 fi
 
 # Try to raise an existing window in Chrome or Safari; open a new one if none found
