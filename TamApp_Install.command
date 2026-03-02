@@ -20,7 +20,7 @@ N='\033[0m'      # reset
 
 REPO_URL="https://github.com/liorFeigenbaum/TamApp.git"
 INSTALL_DIR="$HOME/TamApp"
-PORT=3000
+PORT=5001
 STEPS=6
 STEP=0
 
@@ -310,7 +310,7 @@ PLIST_EOF
 cat > "$APP_PATH/Contents/MacOS/launch" <<'LAUNCH_EOF'
 #!/bin/bash
 # Start the Flask server if not running, then focus or open the browser window
-PORT=3000
+PORT=5001
 URL="http://localhost:$PORT"
 
 if ! lsof -i :$PORT -sTCP:LISTEN -t &>/dev/null; then
