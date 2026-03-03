@@ -7,7 +7,7 @@ Internal tooling for TAM configuration, validation, and data management.
 Open **Terminal** and run:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/liorFeigenbaum/TamApp/main/TamApp_Install.command)
+curl -fsSL https://raw.githubusercontent.com/liorFeigenbaum/TamApp/main/TamApp_Install.command | bash
 ```
 
 This downloads and runs the installer directly — no file to download, no macOS security warnings.
