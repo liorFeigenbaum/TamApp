@@ -21,7 +21,7 @@ N='\033[0m'      # reset
 REPO_URL="https://github.com/liorFeigenbaum/TamApp.git"
 INSTALL_DIR="$HOME/TamApp"
 PORT=5001
-STEPS=6
+STEPS=4
 STEP=0
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -190,207 +190,6 @@ else
     ok "Core packages installed."
 fi
 
-# Make sure Pillow is available (needed for icon)
-python -c "from PIL import Image" 2>/dev/null \
-    || pip install Pillow --quiet
-
-# ══════════════════════════════════════════════════════════════════════════════
-# STEP 5 — Generate icon
-# ══════════════════════════════════════════════════════════════════════════════
-step "Generating app icon"
-
-ICONSET_DIR="${TMPDIR%/}/TamAppInstall_$$/TamApp.iconset"
-ICNS_PATH="${TMPDIR%/}/TamAppInstall_$$/TamApp.icns"
-mkdir -p "$ICONSET_DIR"
-export TAM_ICONSET_DIR="$ICONSET_DIR"
-
-info "Drawing T-monogram badge…"
-
-python - <<'PYEOF'
-from PIL import Image, ImageDraw
-import os, sys
-
-ICONSET = os.environ["TAM_ICONSET_DIR"]
-os.makedirs(ICONSET, exist_ok=True)
-
-# OneBeat brand colours
-BG_CARD = (26,  42,  58)   # #1A2A3A  navy
-TEAL    = (31,  108, 109)  # #1F6C6D
-CORAL   = (253, 96,  74)   # #FD604A
-BORDER  = (31,  50,  72)   # #1F3248
-
-def make_icon(size):
-    img  = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    s    = size
-    pad  = s * 0.04
-    r    = int(s * 0.18)
-
-    # Background rounded square
-    draw.rounded_rectangle(
-        [pad, pad, s - pad, s - pad],
-        radius=r, fill=BG_CARD, outline=BORDER, width=max(2, int(s * 0.012))
-    )
-
-    # Teal top accent bar
-    bar_h = int(s * 0.045)
-    draw.rounded_rectangle([pad, pad, s - pad, pad + bar_h], radius=r, fill=TEAL)
-    draw.rectangle([pad, pad + bar_h // 2, s - pad, pad + bar_h], fill=BG_CARD)
-
-    cx, cy = s / 2, s / 2
-
-    # Bold geometric "T"
-    t_bar_w  = s * 0.60
-    t_bar_h  = s * 0.13
-    t_stem_w = s * 0.19
-    t_stem_h = s * 0.36
-    t_top    = cy - (t_bar_h + t_stem_h) / 2 - s * 0.02
-
-    draw.rectangle([cx - t_bar_w/2, t_top,
-                    cx + t_bar_w/2, t_top + t_bar_h], fill=TEAL)
-    draw.rectangle([cx - t_stem_w/2, t_top + t_bar_h,
-                    cx + t_stem_w/2, t_top + t_bar_h + t_stem_h], fill=TEAL)
-
-    # Coral accent dot (OneBeat brand dot)
-    dr  = int(s * 0.065)
-    dcx = int(cx + t_stem_w/2 + dr * 0.5)
-    dcy = int(t_top + t_bar_h + t_stem_h - dr * 0.1)
-    draw.ellipse([dcx - dr, dcy - dr, dcx + dr, dcy + dr], fill=CORAL)
-
-    return img
-
-master = make_icon(1024)
-for px in [16, 32, 64, 128, 256, 512, 1024]:
-    master.resize((px, px), Image.LANCZOS).save(f"{ICONSET}/icon_{px}x{px}.png")
-    if px <= 512:
-        master.resize((px*2, px*2), Image.LANCZOS).save(f"{ICONSET}/icon_{px}x{px}@2x.png")
-
-print("Icon PNGs written to:", ICONSET)
-PYEOF
-
-# Compile iconset → .icns
-ICONSET_PARENT="$(dirname "$ICONSET_DIR")"
-iconutil -c icns "$ICONSET_DIR" -o "$ICNS_PATH" \
-    || fail "iconutil failed — cannot compile icon."
-ok "Icon compiled → $ICNS_PATH"
-
-# ══════════════════════════════════════════════════════════════════════════════
-# STEP 6 — Create Desktop shortcut
-# ══════════════════════════════════════════════════════════════════════════════
-step "Creating Desktop launcher"
-
-APP_PATH="$HOME/Desktop/TAM App.app"
-
-# Remove stale bundle if present
-[ -d "$APP_PATH" ] && rm -rf "$APP_PATH"
-
-# Directory structure
-mkdir -p "$APP_PATH/Contents/MacOS"
-mkdir -p "$APP_PATH/Contents/Resources"
-
-# Info.plist
-cat > "$APP_PATH/Contents/Info.plist" <<PLIST_EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key>   <string>launch</string>
-  <key>CFBundleIdentifier</key>  <string>com.onebeat.tamapp</string>
-  <key>CFBundleName</key>        <string>TAM App</string>
-  <key>CFBundleIconFile</key>    <string>TamApp</string>
-  <key>CFBundleVersion</key>     <string>1.0</string>
-  <key>CFBundlePackageType</key> <string>APPL</string>
-  <key>LSUIElement</key>         <false/>
-</dict>
-</plist>
-PLIST_EOF
-
-# Launcher script (uses the user's own $HOME/TamApp)
-cat > "$APP_PATH/Contents/MacOS/launch" <<'LAUNCH_EOF'
-#!/bin/bash
-# Start the Flask server if not running, then focus or open the browser window
-PORT=5001
-URL="http://localhost:$PORT"
-
-if ! lsof -i :$PORT -sTCP:LISTEN -t &>/dev/null; then
-  cd "$HOME/TamApp"
-  source .venv/bin/activate 2>/dev/null || true
-  export PATH="$HOME/TamApp/.venv/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-  nohup gunicorn --config gunicorn.conf.py app:app > /tmp/tamapp.log 2>&1 &
-  sleep 3
-fi
-
-# Try to raise an existing window in Chrome or Safari; open a new one if none found
-osascript << EOF
-set targetURL to "$URL"
-set raised to false
-
--- Try Google Chrome
-try
-  tell application "Google Chrome"
-    if it is running then
-      set ti to 0
-      repeat with w in windows
-        set ti to 1
-        repeat with t in tabs of w
-          if URL of t starts with targetURL then
-            set active tab index of w to ti
-            set index of w to 1
-            activate
-            set raised to true
-            exit repeat
-          end if
-          set ti to ti + 1
-        end repeat
-        if raised then exit repeat
-      end repeat
-    end if
-  end tell
-end try
-
--- Try Safari
-if not raised then
-  try
-    tell application "Safari"
-      if it is running then
-        repeat with w in windows
-          repeat with t in tabs of w
-            if URL of t starts with targetURL then
-              set current tab of w to t
-              set index of w to 1
-              activate
-              set raised to true
-              exit repeat
-            end if
-          end repeat
-          if raised then exit repeat
-        end repeat
-      end if
-    end tell
-  end try
-end if
-
--- No existing window found — open in default browser
-if not raised then
-  do shell script "open " & quoted form of targetURL
-end if
-EOF
-LAUNCH_EOF
-chmod +x "$APP_PATH/Contents/MacOS/launch"
-
-# Copy icon
-cp "$ICNS_PATH" "$APP_PATH/Contents/Resources/TamApp.icns"
-
-# Fix macOS quarantine / refresh Finder
-xattr -cr "$APP_PATH" 2>/dev/null
-/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister \
-    -f "$APP_PATH" 2>/dev/null || true
-touch "$APP_PATH"
-killall Finder 2>/dev/null || true
-
-ok "TAM App launcher created on your Desktop!"
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Done
 # ══════════════════════════════════════════════════════════════════════════════
@@ -400,14 +199,25 @@ echo -e "${G}  ║         ✅  Setup Complete!              ║${N}"
 echo -e "${G}  ╚══════════════════════════════════════════╝${N}"
 echo ""
 echo "  TAM App is installed at: $INSTALL_DIR"
-echo "  Desktop shortcut:  ~/Desktop/TAM App"
 echo ""
-echo "  👉  Double-click  'TAM App'  on your Desktop to launch."
+echo "  👉  Once the app opens, click 'Create Desktop Launcher' (top-right)"
+echo "      to add a TAM App icon to your Desktop."
 echo ""
 read -rp "  Launch TAM App now? [Y/n] " -n 1 LAUNCH
 echo ""
 if [[ ! "$LAUNCH" =~ ^[Nn]$ ]]; then
-    open "$APP_PATH"
+    cd "$INSTALL_DIR"
+    source .venv/bin/activate 2>/dev/null || true
+    export PATH="$INSTALL_DIR/.venv/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+    nohup gunicorn --config gunicorn.conf.py app:app > /tmp/tamapp.log 2>&1 &
+    info "Starting server…"
+    i=0
+    while [ $i -lt 15 ]; do
+        sleep 1
+        /usr/sbin/lsof -i :$PORT -sTCP:LISTEN -t &>/dev/null && break
+        i=$((i+1))
+    done
+    open "http://localhost:$PORT"
 fi
 echo ""
 echo "  Setup complete. You may close this window."

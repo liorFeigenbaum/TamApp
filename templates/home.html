@@ -13,7 +13,20 @@
     <span class="topbar-brand-dot"></span>
     TAM App
   </a>
-  <div class="topbar-nav" id="topbar-actions">
+  <div class="topbar-nav" id="topbar-actions" style="display:flex; align-items:center; gap:10px;">
+
+    <button id="launcher-btn"
+            onclick="createLauncher()"
+            title="Create a TAM App icon on your Desktop"
+            style="display:flex; align-items:center; gap:7px;
+                   background:transparent; border:1.5px solid #1F6C6D;
+                   color:#1F6C6D; border-radius:8px; padding:6px 14px;
+                   font-size:0.82rem; font-weight:600; cursor:pointer;
+                   transition:background .18s,color .18s;">
+      <span id="launcher-icon">🖥</span>
+      <span id="launcher-label">Create Desktop Launcher</span>
+    </button>
+
     <button id="update-btn"
             onclick="doUpdate()"
             style="display:none; align-items:center; gap:7px;
@@ -27,17 +40,56 @@
             style="background:#FD604A; color:#fff; border-radius:999px;
                    padding:1px 7px; font-size:0.72rem; font-weight:700;"></span>
     </button>
+
   </div>
 </nav>
 
 <style>
-  #update-btn:hover:not(:disabled) { background:#1F6C6D; color:#fff; }
-  #update-btn:disabled { opacity:.6; cursor:default; }
+  #update-btn:hover:not(:disabled)   { background:#1F6C6D; color:#fff; }
+  #update-btn:disabled               { opacity:.6; cursor:default; }
+  #launcher-btn:hover:not(:disabled) { background:#1F6C6D; color:#fff; }
+  #launcher-btn:disabled             { opacity:.6; cursor:default; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .u-spin { display:inline-block; animation:spin .8s linear infinite; }
 </style>
 
 <script>
+function createLauncher() {
+  const btn   = document.getElementById('launcher-btn');
+  const icon  = document.getElementById('launcher-icon');
+  const label = document.getElementById('launcher-label');
+  btn.disabled = true;
+  icon.className = 'u-spin';
+  icon.textContent = '↻';
+  label.textContent = 'Creating…';
+
+  fetch('/create_launcher', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      icon.className = '';
+      if (d.ok) {
+        icon.textContent = '✓';
+        label.textContent = 'Launcher created!';
+        setTimeout(() => {
+          icon.textContent = '🖥';
+          label.textContent = 'Create Desktop Launcher';
+          btn.disabled = false;
+        }, 3000);
+      } else {
+        icon.textContent = '✕';
+        label.textContent = 'Failed — check console';
+        btn.disabled = false;
+        console.error('Launcher error:', d.error);
+      }
+    })
+    .catch(() => {
+      icon.className = '';
+      icon.textContent = '✕';
+      label.textContent = 'Error — try again';
+      btn.disabled = false;
+    });
+}
+
 (function checkForUpdates() {
   fetch('/git_check')
     .then(r => r.json())
