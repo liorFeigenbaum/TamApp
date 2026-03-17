@@ -578,7 +578,8 @@ export PATH="$APP_DIR/.venv/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PA
 if ! /usr/sbin/lsof -i :$PORT -sTCP:LISTEN -t &>/dev/null; then
   cd "$APP_DIR"
   source .venv/bin/activate 2>/dev/null || true
-  nohup gunicorn --config gunicorn.conf.py app:app >> /tmp/tamapp.log 2>&1 &
+  export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+  nohup arch -arm64 .venv/bin/gunicorn --config gunicorn.conf.py app:app >> /tmp/tamapp.log 2>&1 &
   i=0
   while [ $i -lt 15 ]; do
     sleep 1
