@@ -19,6 +19,7 @@ from scripts.config_yaml import creat
 from scripts.config_yaml_validation.config_validator import validate_config_yaml
 from scripts.data_validation.validator import validate_zip
 from scripts.data_extractor import backup_io as backup_io_script
+from scripts.data_validation import pdf_report as validation_pdf
 
 app = Flask(__name__)
 
@@ -337,6 +338,16 @@ def create_dir():
 	return jsonify({"created": new_path})
 
 
+def _serialisable_result(result: dict) -> dict:
+	"""Return a copy of a validate_zip result safe to store in the Flask session.
+	Removes any non-serialisable values (pandas DataFrames kept under '_df')."""
+	import copy
+	clean = copy.deepcopy(result)
+	for file_info in clean.get("files", {}).values():
+		file_info.pop("_df", None)
+	return clean
+
+
 @app.route("/data_validate", methods=["GET", "POST"])
 def data_validate():
 	result = None
@@ -355,6 +366,9 @@ def data_validate():
 			filepath = os.path.join(sdir, filename)
 			file.save(filepath)
 			result = validate_zip(filepath, session_dir=sdir)
+			# Store serialisable snapshot so the PDF route can use it
+			session["last_validation_result"] = _serialisable_result(result)
+			session["last_validation_zip"]    = filename
 			# Clean up the uploaded zip after processing
 			try:
 				os.remove(filepath)
@@ -362,6 +376,24 @@ def data_validate():
 				pass
 
 	return render_template("data_validation.html", result=result, error=error)
+
+
+@app.route("/data_validate/export_pdf")
+def data_validate_export_pdf():
+	"""Generate and return a PDF summary of the last validation run."""
+	result = session.get("last_validation_result")
+	if not result:
+		return "No validation result found. Please run a validation first.", 404
+
+	zip_name = session.get("last_validation_zip", "unknown.zip")
+	pdf_bytes = validation_pdf.build(result, zip_name)
+
+	response = make_response(pdf_bytes)
+	response.headers["Content-Type"] = "application/pdf"
+	response.headers["Content-Disposition"] = (
+		f'attachment; filename="validation_report_{datetime.date.today()}.pdf"'
+	)
+	return response
 
 
 @app.route("/download_validation_file/<filename>")

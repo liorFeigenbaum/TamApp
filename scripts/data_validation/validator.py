@@ -367,7 +367,7 @@ def _validate_catalogs(zf, zip_names, session_dir=None):
     # Load CSV
     try:
         with zf.open(entry) as f:
-            df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"))
+            df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"), dtype=str)
     except Exception as e:
         result["issues"].append({"level": "error", "msg": f"Failed to read CSV: {e}"})
         return result
@@ -761,7 +761,7 @@ def _validate_inventories(zf, zip_names, session_dir=None):
     # Load CSV
     try:
         with zf.open(entry) as f:
-            df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"))
+            df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"), dtype=str)
     except Exception as e:
         result["issues"].append({"level": "error", "msg": f"Failed to read CSV: {e}"})
         return result
@@ -966,7 +966,7 @@ def _validate_transactions(zf, zip_names, session_dir=None):
     # Load CSV
     try:
         with zf.open(entry) as f:
-            df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"))
+            df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"), dtype=str)
     except Exception as e:
         result["issues"].append({"level": "error", "msg": f"Failed to read CSV: {e}"})
         return result
@@ -1379,7 +1379,7 @@ def validate_zip(zip_path, session_dir=None):
                     else:
                         try:
                             with zf.open(entry) as f:
-                                df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"))
+                                df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"), dtype=str)
                             info = {
                                 "found": True,
                                 "rows": len(df),
