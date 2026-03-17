@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backup IO — TAM App</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+</nav>
+
+<style>
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+    margin-top: 8px;
+  }
+  .results-table th {
+    text-align: left;
+    color: var(--color-gray);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .results-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-gray-light);
+    vertical-align: middle;
+  }
+  .results-table tr:last-child td { border-bottom: none; }
+  .status-ok      { color: #4ade80; font-weight: 600; }
+  .status-error   { color: #f87171; font-weight: 600; }
+  .status-missing { color: #fbbf24; font-weight: 600; }
+  .path-cell      { font-family: monospace; font-size: 0.78rem; color: var(--color-gray); word-break: break-all; }
+  .date-group-header td {
+    background: var(--color-bg-surface);
+    color: var(--color-white);
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding: 10px 12px;
+    border-top: 1px solid var(--color-border);
+  }
+  .spinner {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1>💾 Backup IO</h1>
+    <p>Download historical source files from the S3 backup bucket.</p>
+  </div>
+
+  {% if error %}
+  <div class="msg-error" style="margin-bottom: 24px;">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data" id="backup-form">
+
+    <div class="input-block" style="margin-bottom: 16px;">
+      <label>config.yaml</label>
+      <input type="file" name="config_file" accept=".yaml,.yml" required>
+      <div style="font-size:0.78rem; color:var(--color-gray); margin-top:6px;">
+        Sources connected to a regular S3 IO bucket will be auto-detected.
+      </div>
+    </div>
+
+    <div class="input-block" style="margin-bottom: 16px;">
+      <label>Date Range</label>
+      <input type="text" id="date-range-picker" placeholder="Click to select start → end date"
+             autocomplete="off" readonly
+             style="margin-top:8px; cursor:pointer; width:100%;">
+      <input type="hidden" name="start_date" id="start_date" value="{{ prev_start or '' }}">
+      <input type="hidden" name="end_date"   id="end_date"   value="{{ prev_end   or '' }}">
+      <div style="font-size:0.78rem; color:var(--color-gray); margin-top:6px;">
+        Click a start date then an end date on the calendar.
+      </div>
+    </div>
+
+    <div class="input-block" style="margin-bottom: 24px;">
+      <label>Output Directory</label>
+      <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
+        <input type="text" name="output_dir" id="output_dir_input"
+               value="~/Desktop/backup_io" required
+               style="flex:1; cursor:default;"
+               readonly>
+        <button type="button" class="btn btn-ghost" id="browse-btn"
+                style="white-space:nowrap; padding:8px 16px;" onclick="openDirModal()">
+          📂 Browse…
+        </button>
+      </div>
+      <div style="font-size:0.78rem; color:var(--color-gray); margin-top:6px;">
+        Files will be saved as <code>output_dir/{date}/{source_name}</code>.
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" id="run-btn">
+      ▶ Run Extraction
+      <span class="spinner" id="spinner"></span>
+    </button>
+
+  </form>
+
+  {% if results is not none %}
+  <div style="margin-top: 40px;">
+
+    <div class="section-label"><h2>Results</h2></div>
+
+    {# Summary counts #}
+    {% set ok_count      = results | selectattr('status', 'eq', 'ok')        | list | length %}
+    {% set err_count     = results | selectattr('status', 'ne', 'ok')        | list | length %}
+    {% set total_count   = results | length %}
+
+    <div style="display:flex; gap:16px; margin-bottom:20px; flex-wrap:wrap;">
+      <div class="msg-success" style="padding:10px 18px; flex:1; min-width:140px;">
+        ✓ {{ ok_count }} downloaded
+      </div>
+      {% if err_count > 0 %}
+      <div class="msg-error" style="padding:10px 18px; flex:1; min-width:140px;">
+        ✕ {{ err_count }} failed / not found
+      </div>
+      {% endif %}
+    </div>
+
+    {% if results %}
+    <div class="input-block" style="padding:0; overflow:hidden;">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Source</th>
+            <th>Status</th>
+            <th>Path / Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set ns = namespace(prev_date='') %}
+          {% for r in results %}
+          <tr>
+            <td>{{ r.date }}</td>
+            <td>{{ r.source }}</td>
+            <td>
+              {% if r.status == 'ok' %}
+                <span class="status-ok">✓ ok</span>
+              {% elif r.status == 'not_found' %}
+                <span class="status-missing">⚠ not found</span>
+              {% else %}
+                <span class="status-error">✕ error</span>
+              {% endif %}
+            </td>
+            <td class="path-cell">
+              {% if r.status == 'ok' %}{{ r.path }}{% else %}{{ r.get('error', '') }}{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div style="margin-top: 32px;">
+    <a href="/data_extractor" class="btn btn-ghost">← Back to Data Extractor</a>
+  </div>
+</div>
+
+<!-- ── Directory picker modal ─────────────────────────────────── -->
+<div id="dir-modal-backdrop" style="
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.65); z-index:1000;
+  justify-content:center; align-items:center;
+" onclick="if(event.target===this) closeDirModal()">
+
+  <div style="
+    background:var(--color-bg-surface, #1e1e2e);
+    border:1px solid var(--color-border, #333);
+    border-radius:12px; width:min(560px,92vw);
+    max-height:80vh; display:flex; flex-direction:column;
+    box-shadow:0 24px 60px rgba(0,0,0,0.6);
+  ">
+
+    <!-- header -->
+    <div style="padding:18px 20px 14px; border-bottom:1px solid var(--color-border, #333);">
+      <div style="font-weight:700; font-size:1rem; color:var(--color-white, #fff); margin-bottom:6px;">
+        📂 Select Output Directory
+      </div>
+      <div id="dir-crumb" style="
+        font-family:monospace; font-size:0.78rem;
+        color:var(--color-gray, #888); word-break:break-all;
+      ">—</div>
+    </div>
+
+    <!-- directory list -->
+    <div id="dir-list" style="
+      overflow-y:auto; flex:1;
+      padding:8px 0;
+    "></div>
+
+    <!-- new-folder inline row (hidden by default) -->
+    <div id="new-folder-row" style="
+      display:none; padding:10px 20px; gap:8px; align-items:center;
+      border-top:1px solid var(--color-border, #333);
+    ">
+      <input id="new-folder-input" type="text" placeholder="New folder name"
+             style="flex:1; font-size:0.88rem;"
+             onkeydown="if(event.key==='Enter') confirmNewFolder();
+                        if(event.key==='Escape') cancelNewFolder();">
+      <button type="button" class="btn btn-primary"
+              style="padding:6px 14px; font-size:0.85rem;" onclick="confirmNewFolder()">Create</button>
+      <button type="button" class="btn btn-ghost"
+              style="padding:6px 14px; font-size:0.85rem;" onclick="cancelNewFolder()">✕</button>
+    </div>
+
+    <!-- footer -->
+    <div style="
+      padding:14px 20px; border-top:1px solid var(--color-border, #333);
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+    ">
+      <button type="button" class="btn btn-ghost"
+              style="font-size:0.85rem;" onclick="showNewFolderRow()">＋ New Folder</button>
+      <div style="display:flex; gap:10px;">
+        <button type="button" class="btn btn-ghost" onclick="closeDirModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="dir-select-btn" onclick="confirmDir()">
+          ✓ Select this folder
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+// ── Date range picker ────────────────────────────────────────────
+const fp = flatpickr("#date-range-picker", {
+  mode:        "range",
+  dateFormat:  "Y-m-d",
+  theme:       "dark",
+  onChange: function(selectedDates) {
+    if (selectedDates.length === 2) {
+      const fmt = d => d.toISOString().slice(0, 10);
+      document.getElementById('start_date').value = fmt(selectedDates[0]);
+      document.getElementById('end_date').value   = fmt(selectedDates[1]);
+    } else {
+      document.getElementById('start_date').value = '';
+      document.getElementById('end_date').value   = '';
+    }
+  }
+});
+
+// Restore previously selected range on page reload (after POST)
+const prevStart = "{{ prev_start or '' }}";
+const prevEnd   = "{{ prev_end   or '' }}";
+if (prevStart && prevEnd) {
+  fp.setDate([prevStart, prevEnd]);
+}
+
+// ── Submit guard + spinner ───────────────────────────────────────
+function onSubmit(e) {
+  if (!document.getElementById('start_date').value ||
+      !document.getElementById('end_date').value) {
+    alert('Please select a date range.');
+    e.preventDefault();
+    return false;
+  }
+  const btn     = document.getElementById('run-btn');
+  const spinner = document.getElementById('spinner');
+  btn.disabled                  = true;
+  spinner.style.display         = 'inline-block';
+  btn.childNodes[0].textContent = ' Running…';
+}
+document.getElementById('backup-form').addEventListener('submit', onSubmit);
+
+// ── Directory picker ─────────────────────────────────────────────
+let _currentDir = null;
+
+async function openDirModal() {
+  document.getElementById('dir-modal-backdrop').style.display = 'flex';
+  // Start at current value, walk up to nearest existing ancestor, fallback to ~
+  let path = document.getElementById('output_dir_input').value || '~';
+  while (path && path !== '/') {
+    const res  = await fetch('/api/browse-dir?path=' + encodeURIComponent(path));
+    const data = await res.json();
+    if (!data.error) { await browseDir(path); return; }
+    // Go one level up
+    path = path.replace(/\/[^/]+$/, '') || '~';
+  }
+  await browseDir('~');
+}
+
+function closeDirModal() {
+  document.getElementById('dir-modal-backdrop').style.display = 'none';
+}
+
+function confirmDir() {
+  if (_currentDir) {
+    document.getElementById('output_dir_input').value = _currentDir;
+  }
+  closeDirModal();
+}
+
+function showNewFolderRow() {
+  const row   = document.getElementById('new-folder-row');
+  const input = document.getElementById('new-folder-input');
+  row.style.display = 'flex';
+  input.value = '';
+  input.focus();
+}
+
+function cancelNewFolder() {
+  document.getElementById('new-folder-row').style.display = 'none';
+}
+
+async function confirmNewFolder() {
+  const input = document.getElementById('new-folder-input');
+  const name  = input.value.trim();
+  if (!name) return;
+
+  try {
+    const res  = await fetch('/api/create-dir', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ parent: _currentDir, name }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      alert('Could not create folder: ' + data.error);
+      return;
+    }
+    cancelNewFolder();
+    // Refresh listing and navigate into the new folder
+    await browseDir(data.created);
+  } catch (err) {
+    alert('Error: ' + err);
+  }
+}
+
+async function browseDir(path) {
+  const list = document.getElementById('dir-list');
+  list.innerHTML = '<div style="padding:16px 20px; color:var(--color-gray);">Loading…</div>';
+
+  try {
+    const res  = await fetch('/api/browse-dir?path=' + encodeURIComponent(path));
+    const data = await res.json();
+
+    if (data.error) {
+      list.innerHTML = `<div style="padding:16px 20px; color:#f87171;">${data.error}</div>`;
+      return;
+    }
+
+    _currentDir = data.current;
+    document.getElementById('dir-crumb').textContent = data.current;
+
+    list.innerHTML = '';
+
+    // ".." row
+    if (data.parent) {
+      const up = document.createElement('div');
+      up.className = 'dir-row';
+      up.innerHTML = `<span class="dir-icon">↑</span><span class="dir-name">..</span>`;
+      up.onclick = () => browseDir(data.parent);
+      list.appendChild(up);
+    }
+
+    if (data.dirs.length === 0 && !data.parent) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:16px 20px; color:var(--color-gray); font-size:0.85rem;';
+      empty.textContent = 'No subdirectories.';
+      list.appendChild(empty);
+    }
+
+    data.dirs.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'dir-row';
+      row.innerHTML = `<span class="dir-icon">📁</span><span class="dir-name">${name}</span>`;
+      row.onclick = () => browseDir(data.current + '/' + name);
+      list.appendChild(row);
+    });
+
+  } catch (err) {
+    list.innerHTML = `<div style="padding:16px 20px; color:#f87171;">Failed to load: ${err}</div>`;
+  }
+}
+</script>
+
+<style>
+.dir-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-size: 0.88rem;
+  color: var(--color-gray-light, #ccc);
+}
+.dir-row:hover { background: rgba(255,255,255,0.06); }
+.dir-icon { font-size: 1rem; flex-shrink: 0; }
+.dir-name { word-break: break-all; }
+</style>
+
+</body>
+</html>

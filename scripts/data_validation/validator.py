@@ -27,7 +27,7 @@ LOCATIONS_MANDATORY_COLS = [
     ("type", "str"),
 ]
 
-LOCATION_VALID_TYPES = {"store", "warehouse", "ecomers", "vandor"}
+LOCATION_VALID_TYPES = {"store", "warehouse", "ecomers", "vandor", "supplier"}
 
 TRANSACTIONS_MANDATORY_COLS = [
     ("id",                 "str"),
@@ -618,10 +618,10 @@ def _validate_locations(zf, zip_names, session_dir=None):
             "msg": "File contains a UTF-8 BOM (Byte Order Mark). Remove BOM for cleaner processing.",
         })
 
-    # Load CSV
+    # Load CSV — force all columns as str so IDs like "001" are not coerced to 1
     try:
         with zf.open(entry) as f:
-            df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"))
+            df = pd.read_csv(io.TextIOWrapper(f, encoding="utf-8-sig"), dtype=str)
     except Exception as e:
         result["issues"].append({"level": "error", "msg": f"Failed to read CSV: {e}"})
         return result
@@ -638,6 +638,11 @@ def _validate_locations(zf, zip_names, session_dir=None):
     result["canonical_map"] = canonical_map
     result["mapper_used"] = mapper_used
     result["issues"].extend(col_issues)
+
+    # Ensure id column stays as string (preserves leading zeros like "001" ≠ "01")
+    id_col_raw = canonical_map.get("id")
+    if id_col_raw and id_col_raw in df.columns:
+        df[id_col_raw] = df[id_col_raw].astype(str)
 
     # Null rows export
     result["nulls_file"] = _export_null_rows(df, canonical_map, session_dir)
@@ -676,7 +681,9 @@ def _validate_locations(zf, zip_names, session_dir=None):
     # ── Duplicate id check ────────────────────────────────────────────────────
     id_col = canonical_map.get("id")
     if id_col and id_col in df.columns:
-        dup_mask = df.duplicated(subset=[id_col], keep=False)
+        # Compare as strings so "001" and "01" are treated as distinct
+        str_ids = df[id_col].astype(str)
+        dup_mask = str_ids.duplicated(keep=False)
         dup_count = dup_mask.sum()
         if dup_count:
             result["issues"].append({

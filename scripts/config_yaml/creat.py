@@ -47,20 +47,20 @@ def get_sources(config_json):
 	keys_to = [key for key in config_json.keys() if key.startswith("source_")]
 	names = config_json['source_name[]']
 	types = config_json['source_type[]']
-	time_offset = config_json['source_time_offset[]']
+	time_offset = config_json.get('source_time_offset[]', [])
 	path = config_json['source_path[]']
-	connection = config_json['source_connection[]']
-	
-	
+	connection = config_json.get('source_connection[]', [])
+
+
 	for x in range(len(names)):
 		name = names[x]
 		sources[name] = dict()
 		sources[name]['type'] = types[x]
 		if types[x] == 'file':
-			sources[name]['connections'] = 'file'
+			sources[name]['connection'] = 'file'
 			connection.insert(x, 'file')
 		else:
-			sources[name]['connections'] = connection[x]
+			sources[name]['connection'] = connection[x]
 		sources[name]['path'] = path[x]
 	
 	for key in keys_to:
@@ -89,7 +89,7 @@ def get_connections(config_json):
 			name = names[x]
 			connections[name] = dict()
 			for attribute in attributes:
-				new_key = attribute.split("_")[1].removesuffix("[]")
+				new_key = "_".join(attribute.split("_")[1:]).removesuffix("[]")
 				connections[name][new_key] = config_json[attribute][x]
 				# config_json.pop(attribute, None)
 		config_json.pop(type+"_name[]", None)

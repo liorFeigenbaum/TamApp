@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "TamApp (Flask)",
-      "runtimeExecutable": "gunicorn",
-      "runtimeArgs": ["app:app", "--config", "gunicorn.conf.py"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES gunicorn app:app --config gunicorn.conf.py"],
       "autoPort": true
     }
   ]

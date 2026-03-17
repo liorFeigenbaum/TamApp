@@ -65,7 +65,7 @@ async function add_source(containerId) {
         const type_input =
             parentBlock.querySelector("input[name$='_type[]'], select[name$='_type[]']");
 
-        let raw_type = type_input ? type_input.value : "unknown";
+        let raw_type = type_input ? (type_input.dataset.sourceType || type_input.value) : "unknown";
 
         if (DATABASE_TYPES.includes(raw_type)) {
             type = "database";
@@ -335,6 +335,7 @@ async function restoreWizardData(data) {
         { type: 'snowflake', prefix: 'snowflake',  staticCount: 0 },
         { type: 'bigquery',  prefix: 'bigquery',   staticCount: 0 },
         { type: 'vpn',       prefix: 'vpn',        staticCount: 0 },
+        { type: 'diggerx',   prefix: 'diggerx',    staticCount: 0 },
     ];
 
     for (const { type, prefix, staticCount } of connConfig) {

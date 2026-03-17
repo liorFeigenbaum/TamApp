@@ -18,6 +18,7 @@ from toll_box.logs import start_log
 from scripts.config_yaml import creat
 from scripts.config_yaml_validation.config_validator import validate_config_yaml
 from scripts.data_validation.validator import validate_zip
+from scripts.data_extractor import backup_io as backup_io_script
 
 app = Flask(__name__)
 
@@ -161,20 +162,21 @@ def config_validator():
 			filename = secure_filename(file.filename)
 			filepath = os.path.join(get_session_dir(), filename)
 			file.save(filepath)
-			
-			# 🔑 store path in session
-			session["uploaded_file"] = filepath
-			
+
 			result = validate_config_yaml(filepath)
-		
-		if not result["ok"]:
-			error = result["error"]
-		else:
-			submitted_data = "Config file is valid ✅"
-			if result.get("tam"):
-				warning = result.get("warning")
-			if result.get("skip_calc"):
-				skip_watning = result.get("skip_calc")
+
+			if not result["ok"]:
+				# Validation failed — delete the file and do NOT store it in session
+				os.remove(filepath)
+				error = result["error"]
+			else:
+				# 🔑 only store path in session when the config is valid
+				session["uploaded_file"] = filepath
+				submitted_data = "Config file is valid ✅"
+				if result.get("tam"):
+					warning = result.get("warning")
+				if result.get("skip_calc"):
+					skip_watning = result.get("skip_calc")
 	
 	return render_template(
 		"configV.html",
@@ -211,6 +213,128 @@ def download():
 	session.pop("wizard_data", None)
 	
 	return response
+
+
+def _check_aws_sso():
+	"""Return (ok, issue_type, issue_message) for the aws sso login --profile prod prerequisite."""
+	aws_bin = "/opt/homebrew/bin/aws"
+	if not os.path.isfile(aws_bin):
+		return False, "no_cli", f"AWS CLI not found at {aws_bin}"
+	aws_config = os.path.expanduser("~/.aws/config")
+	if not os.path.isfile(aws_config):
+		return False, "no_profile", "~/.aws/config not found"
+	with open(aws_config) as f:
+		if "[profile prod]" not in f.read():
+			return False, "no_profile", "'prod' SSO profile not found in ~/.aws/config"
+	# Verify the session is actually active
+	result = subprocess.run(
+		[aws_bin, "sts", "get-caller-identity", "--profile", "prod"],
+		capture_output=True, text=True, timeout=10
+	)
+	if result.returncode != 0:
+		return False, "expired", "SSO session expired or not logged in"
+	return True, None, None
+
+
+@app.route("/data_extractor")
+def data_extractor():
+	aws_ok, aws_issue_type, aws_issue = _check_aws_sso()
+	return render_template("data_extractor.html", aws_ok=aws_ok, aws_issue_type=aws_issue_type, aws_issue=aws_issue)
+
+
+@app.route("/data_extractor/backup-io", methods=["GET", "POST"])
+def backup_io():
+	results    = None
+	error      = None
+	prev_start = None
+	prev_end   = None
+
+	if request.method == "POST":
+		config_file = request.files.get("config_file")
+		start_str   = request.form.get("start_date", "").strip()
+		end_str     = request.form.get("end_date",   "").strip()
+		output_dir  = request.form.get("output_dir", "~/Desktop/backup_io").strip()
+
+		prev_start = start_str
+		prev_end   = end_str
+
+		if not config_file or config_file.filename == "":
+			error = "Please upload a config.yaml file."
+		elif not start_str or not end_str:
+			error = "Please select a date range."
+		else:
+			try:
+				start_date = datetime.date.fromisoformat(start_str)
+				end_date   = datetime.date.fromisoformat(end_str)
+
+				sdir     = get_session_dir()
+				filename = secure_filename(config_file.filename)
+				cfg_path = os.path.join(sdir, filename)
+				config_file.save(cfg_path)
+
+				results, error = backup_io_script.run(
+					cfg_path, start_date, end_date, output_dir
+				)
+			except Exception as e:
+				error = str(e)
+
+	return render_template(
+		"backup_io.html",
+		results=results,
+		error=error,
+		prev_start=prev_start,
+		prev_end=prev_end,
+	)
+
+
+@app.route("/api/browse-dir")
+def browse_dir():
+	"""Return subdirectories of the requested path for the directory picker modal."""
+	raw = request.args.get("path", "~").strip() or "~"
+	path = os.path.expanduser(raw)
+	path = os.path.abspath(path)
+
+	if not os.path.isdir(path):
+		return jsonify({"error": f"Not a directory: {path}"}), 400
+
+	parent = os.path.dirname(path) if path != os.path.sep else None
+
+	try:
+		entries = sorted(
+			e for e in os.listdir(path)
+			if os.path.isdir(os.path.join(path, e)) and not e.startswith(".")
+		)
+	except PermissionError:
+		entries = []
+
+	return jsonify({"current": path, "parent": parent, "dirs": entries})
+
+
+@app.route("/api/create-dir", methods=["POST"])
+def create_dir():
+	"""Create a new subdirectory inside the given parent path."""
+	data   = request.get_json(silent=True) or {}
+	parent = data.get("parent", "").strip()
+	name   = data.get("name", "").strip()
+
+	if not parent or not name:
+		return jsonify({"error": "parent and name are required"}), 400
+
+	# Reject path traversal attempts
+	if "/" in name or "\\" in name or name in (".", ".."):
+		return jsonify({"error": "Invalid folder name"}), 400
+
+	parent = os.path.abspath(os.path.expanduser(parent))
+	if not os.path.isdir(parent):
+		return jsonify({"error": f"Parent is not a directory: {parent}"}), 400
+
+	new_path = os.path.join(parent, name)
+	try:
+		os.makedirs(new_path, exist_ok=True)
+	except Exception as e:
+		return jsonify({"error": str(e)}), 500
+
+	return jsonify({"created": new_path})
 
 
 @app.route("/data_validate", methods=["GET", "POST"])

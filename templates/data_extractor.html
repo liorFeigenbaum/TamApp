@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Extractor — TAM App</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+</nav>
+
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1>Data Extractor</h1>
+    <p>Choose an extraction method to get started.</p>
+  </div>
+
+  {% if aws_ok %}
+  <div class="msg-success" style="margin-bottom: 24px;">
+    ✓ AWS SSO session is active — ready to extract.
+  </div>
+  {% elif aws_issue_type == 'no_profile' %}
+  <div class="msg-error" style="margin-bottom: 24px;">
+    <strong>AWS SSO profile not configured:</strong> {{ aws_issue }}<br><br>
+    <span style="font-size:0.88rem;">To set up the <code>prod</code> profile, run the following command and follow the prompts:</span><br><br>
+    <code style="display:block; background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:6px; margin-top:6px; font-size:0.85rem;">
+      /opt/homebrew/bin/aws configure sso --profile prod
+    </code>
+    <div style="font-size:0.82rem; opacity:0.75; margin-top:10px;">
+      You will be prompted for: SSO start URL, SSO region, account, role, and default output format.<br>
+      Once configured, run: <code>/opt/homebrew/bin/aws sso login --profile prod</code>, then refresh this page.
+    </div>
+  </div>
+  {% elif aws_issue_type == 'expired' %}
+  <div class="msg-error" style="margin-bottom: 24px;">
+    <strong>AWS SSO session expired.</strong> Log in again, then refresh this page:<br><br>
+    <code style="display:block; background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:6px; margin-top:6px; font-size:0.85rem;">
+      /opt/homebrew/bin/aws sso login --profile prod
+    </code>
+  </div>
+  {% else %}
+  <div class="msg-error" style="margin-bottom: 24px;">
+    <strong>AWS SSO not ready:</strong> {{ aws_issue }}
+  </div>
+  {% endif %}
+
+  <div class="home-grid">
+
+    <a class="home-card" href="/data_extractor/api">
+      <div class="home-card-icon">🌐</div>
+      <div class="home-card-title">API</div>
+      <div class="home-card-desc">Extract data using an API connection.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+    <a class="home-card" href="/data_extractor/api-validation">
+      <div class="home-card-icon">✅</div>
+      <div class="home-card-title">API Validation</div>
+      <div class="home-card-desc">Validate and test your API extraction settings.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+    <a class="home-card" href="/data_extractor/io">
+      <div class="home-card-icon">📂</div>
+      <div class="home-card-title">IO</div>
+      <div class="home-card-desc">Extract data via file input/output operations.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+    <a class="home-card" href="/data_extractor/backup-io">
+      <div class="home-card-icon">💾</div>
+      <div class="home-card-title">Backup IO</div>
+      <div class="home-card-desc">Extract data from backup file sources.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+    <a class="home-card" href="/data_extractor/manual">
+      <div class="home-card-icon">✏️</div>
+      <div class="home-card-title">Manual</div>
+      <div class="home-card-desc">Manually input or configure extraction parameters.</div>
+      <div class="home-card-arrow">→</div>
+    </a>
+
+  </div>
+
+  <div style="margin-top: 32px;">
+    <a href="/" class="btn btn-ghost">← Back to Home</a>
+  </div>
+</div>
+
+</body>
+</html>
