@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Map Columns — TAM App</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <style>
+    .section-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .section-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-white);
+      text-transform: capitalize;
+    }
+
+    .section-file-chip {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(31,108,109,0.15);
+      color: #5eead4;
+      font-family: "JetBrains Mono", Consolas, monospace;
+    }
+
+    .missing-chip {
+      background: rgba(73,74,74,0.3);
+      color: var(--color-gray);
+    }
+
+    .mapping-row {
+      display: grid;
+      grid-template-columns: 180px 24px 1fr;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .canon-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-gray-light);
+      font-family: "JetBrains Mono", Consolas, monospace;
+      text-align: right;
+    }
+
+    .arrow { color: var(--color-gray); font-size: 0.9rem; text-align: center; }
+
+    .mapping-select {
+      width: 100%;
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-white);
+      padding: 7px 10px;
+      font-size: 0.82rem;
+    }
+
+    .mapping-select:focus {
+      outline: none;
+      border-color: var(--color-teal);
+    }
+
+    .mapping-select.auto-matched {
+      border-color: rgba(31,108,109,0.6);
+    }
+
+    .match-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: rgba(2,122,72,0.15);
+      color: #4ade80;
+      font-weight: 600;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .section-missing {
+      text-align: center;
+      padding: 20px;
+      color: var(--color-gray);
+      font-size: 0.875rem;
+      font-style: italic;
+    }
+
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--color-border);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+  <div class="topbar-nav">
+    <a href="/">Home</a>
+    <a href="/config">Generator</a>
+    <a href="/configV">Validator</a>
+  </div>
+</nav>
+
+<div class="page-wrapper">
+
+  <div class="page-header">
+    <h1>Map Columns</h1>
+    <p>Match each canonical TAM column to the actual column name found in your files. Auto-matched columns are pre-selected — adjust any that look wrong.</p>
+  </div>
+
+  <form method="POST" action="/mapper/map" id="mapForm">
+
+    {% set section_order = ["catalogs", "locations", "inventories", "transactions"] %}
+
+    {% for section in section_order %}
+      {% set info       = detected.get(section) %}
+      {% set canon_list = canonical_cols[section] %}
+
+      <div class="section-card">
+        <div class="section-card-header">
+          <span class="section-title">{{ section }}</span>
+          {% if info %}
+            <span class="section-file-chip">📄 {{ info.actual_file }}</span>
+          {% else %}
+            <span class="section-file-chip missing-chip">⚠ Not found in ZIP</span>
+          {% endif %}
+        </div>
+
+        {% if info %}
+          {% for canon in canon_list %}
+            {% set field_name = section ~ "__" ~ canon %}
+            {# Try to auto-match: exact, then case-insensitive #}
+            {% set auto = "" %}
+            {% for col in info.columns %}
+              {% if col == canon and auto == "" %}{% set auto = col %}{% endif %}
+            {% endfor %}
+            {% if auto == "" %}
+              {% for col in info.columns %}
+                {% if col.lower() == canon.lower() and auto == "" %}{% set auto = col %}{% endif %}
+              {% endfor %}
+            {% endif %}
+
+            <div class="mapping-row">
+              <span class="canon-label">
+                {{ canon }}
+                {% if auto != "" %}<span class="match-badge">auto</span>{% endif %}
+              </span>
+              <span class="arrow">→</span>
+              <select name="{{ field_name }}"
+                      class="mapping-select {% if auto != '' %}auto-matched{% endif %}">
+                <option value="__skip__">— skip / not in file —</option>
+                {% for col in info.columns %}
+                  <option value="{{ col }}"
+                    {% if col == auto %}selected{% endif %}>
+                    {{ col }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endfor %}
+
+        {% else %}
+          <div class="section-missing">
+            File not detected — this section will be omitted from the mapper.
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    <div class="action-bar">
+      <button type="submit" class="btn btn-primary">
+        ⬇ Download input_file_mapper.yml
+      </button>
+      <a href="/mapper" class="btn btn-ghost">← Upload different ZIP</a>
+    </div>
+
+  </form>
+
+</div>
+
+</body>
+</html>

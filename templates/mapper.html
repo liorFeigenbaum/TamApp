@@ -5,6 +5,216 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Input File Mapper — TAM App</title>
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+  <style>
+    /* ── Upload zone ─────────────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 40px 24px;
+      text-align: center;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+    .upload-zone:hover,
+    .upload-zone.drag-over { border-color: var(--color-teal); background: rgba(31,108,109,0.06); }
+    .upload-zone-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .upload-zone-text {
+      color: var(--color-gray);
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+    }
+    .upload-zone-text strong { color: var(--color-white); }
+
+    /* ── File cards ──────────────────────────────────────────── */
+    .file-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-top: 8px;
+    }
+
+    .file-card {
+      background: var(--color-bg-card);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .file-card.found  { border-left: 3px solid var(--color-teal); }
+    .file-card.missing { border-left: 3px solid var(--color-border); }
+
+    .file-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .file-card-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--color-white);
+      text-transform: capitalize;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-ok      { background: rgba(2,122,72,0.15);  color: #4ade80; }
+    .badge-missing { background: rgba(73,74,74,0.3);   color: var(--color-gray); }
+
+    /* ── Section divider labels ──────────────────────────────── */
+    .sub-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--color-gray);
+      font-weight: 600;
+      margin: 16px 0 8px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Auto-matched table ──────────────────────────────────── */
+    .matched-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .matched-table th {
+      text-align: left;
+      padding: 6px 10px;
+      background: var(--color-bg-surface);
+      color: var(--color-gray);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .matched-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-gray-light);
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.78rem;
+    }
+    .matched-table tr:last-child td { border-bottom: none; }
+    .badge-check {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 7px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(2,122,72,0.15);
+      color: #4ade80;
+    }
+
+    /* ── Unmatched / map rows ────────────────────────────────── */
+    .map-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .map-row:last-child { border-bottom: none; }
+    .map-csv-col {
+      flex: 1;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.78rem;
+      color: var(--color-gray-light);
+      min-width: 0;
+      word-break: break-all;
+    }
+    .canon-select,
+    .type-select {
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm, 4px);
+      color: var(--color-gray-light);
+      font-size: 0.8rem;
+      padding: 5px 8px;
+      cursor: pointer;
+      outline: none;
+    }
+    .canon-select:focus,
+    .type-select:focus { border-color: var(--color-teal); }
+    .canon-select { min-width: 200px; }
+    .type-select  { min-width: 100px; }
+
+    /* ── Action bar ──────────────────────────────────────────── */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .not-found-note {
+      color: var(--color-gray);
+      font-size: 0.875rem;
+      font-style: italic;
+    }
+
+    /* ── YAML Preview ────────────────────────────────────────── */
+    .yaml-preview-wrap {
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .yaml-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: var(--color-bg-card);
+      border-bottom: 1px solid var(--color-border);
+      font-size: 0.78rem;
+      color: var(--color-gray);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-gray);
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .copy-btn:hover { color: var(--color-white); border-color: var(--color-teal); }
+    #yamlContent {
+      display: block;
+      padding: 20px;
+      margin: 0;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: #a8d4b0;
+      white-space: pre;
+      overflow-x: auto;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 24px;
+    }
+  </style>
 </head>
 <body>
 
@@ -24,53 +234,249 @@
 
   <div class="page-header">
     <h1>Input File Mapper</h1>
-    <p>Define data blocks to build your input_file_mapper.yml.</p>
+    <p>Upload a ZIP to auto-detect and map columns to canonical names</p>
   </div>
 
-  <div class="add-block-row">
-    <select id="blockType">
-      <option value="text">Text</option>
-      <option value="email">Email</option>
-    </select>
-    <button type="button" class="btn" onclick="addBlock()">+ Add Block</button>
+  {% if yaml_preview %} {# checked first so preview always wins over upload screen #}
+
+  <div class="page-header" style="margin-bottom:8px;">
+    <h1>input_file_mapper.yml</h1>
+    <p>Review your mapper before downloading.</p>
   </div>
 
-  <form method="POST">
-    <div id="blockContainer" class="two-columns"></div>
-    <div class="nav-buttons" style="border-top:1px solid var(--color-border);margin-top:24px;padding-top:20px;">
-      <a href="/" class="btn btn-ghost">← Back to Home</a>
-      <button type="submit" class="btn btn-primary">Generate Mapper</button>
+  <pre id="yamlContent" class="input-block">{{ yaml_preview }}</pre>
+
+  <div class="nav-buttons" style="margin-top:24px; border-top:none; padding-top:0;">
+    <a href="/mapper" class="btn btn-ghost">&larr; Back to Edit</a>
+    <button class="btn btn-primary" onclick="downloadYaml()">&#8595; Download input_file_mapper.yml</button>
+  </div>
+
+  {% elif not analysis %}
+
+  <!-- ── Upload Screen ─────────────────────────────────────────── -->
+  <div class="input-block" style="max-width:640px; margin-bottom:32px;">
+    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+
+      <label>ZIP File</label>
+      <div class="upload-zone" id="dropZone"
+           onclick="document.getElementById('zipInput').click()"
+           ondragover="event.preventDefault(); this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleDrop(event)">
+        <div class="upload-zone-icon">🗂</div>
+        <div class="upload-zone-text">
+          <strong>Click to select</strong> or drag and drop your ZIP file<br>
+          Expected contents: <code>catalogs.csv</code>, <code>locations.csv</code>,
+          <code>inventories.csv</code>, <code>transactions.csv</code>
+        </div>
+        <span id="fileLabel" style="color:var(--color-teal);font-size:0.85rem;font-weight:600;"></span>
+      </div>
+      <input type="file" id="zipInput" name="file" accept=".zip" required
+             style="display:none" onchange="onFileChosen(this)">
+
+      {% if error %}
+      <div class="msg-error" style="margin-top:16px;">
+        <strong>Error:</strong> {{ error }}
+      </div>
+      {% endif %}
+
+      <div style="margin-top:20px;">
+        <button type="submit" class="btn btn-primary" id="submitBtn">Analyse ZIP</button>
+      </div>
+    </form>
+  </div>
+
+  {% else %} {# ── Analysis results ── #}
+
+  <form method="POST" action="/mapper/generate" id="generateForm">
+
+    <div class="file-grid">
+      {% for section in ["locations", "catalogs", "inventories", "transactions"] %}
+        {% set info = analysis[section] %}
+        <div class="file-card {% if info.found %}found{% else %}missing{% endif %}">
+          <div class="file-card-header">
+            <span class="file-card-name">{{ section | capitalize }}</span>
+            {% if info.found %}
+              <span class="badge badge-ok">&#10003; {{ info.filename }}</span>
+            {% else %}
+              <span class="badge badge-missing">Not Found</span>
+            {% endif %}
+          </div>
+
+          {% if info.found %}
+
+            {# Hidden file input #}
+            <input type="hidden" name="files__{{ section }}" value="{{ info.filename }}">
+
+            {# ── Auto-matched section ── #}
+            {% if info.matched %}
+              <div class="sub-label">Auto-matched ({{ info.matched | length }})</div>
+              <table class="matched-table">
+                <thead>
+                  <tr>
+                    <th>CSV Column</th>
+                    <th>Canonical Name</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for canonical, csv_col in info.matched.items() %}
+                  <tr>
+                    <td>{{ csv_col }}</td>
+                    <td>{{ canonical }}</td>
+                    <td><span class="badge-check">&#10003;</span></td>
+                  </tr>
+                  <input type="hidden" name="auto__{{ section }}__{{ canonical }}" value="{{ csv_col }}">
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% endif %}
+
+            {# ── Unmatched columns section ── #}
+            {% if info.unmatched_csv %}
+              <div class="sub-label" style="margin-top:{% if info.matched %}20px{% else %}0{% endif %};">Needs mapping ({{ info.unmatched_csv | length }})</div>
+              <div>
+                {% for csv_col in info.unmatched_csv %}
+                  {# Use loop index as the type-select ID so JS and Jinja always agree,
+                     regardless of special characters in the column name. #}
+                  {% set row_id = section ~ '__' ~ loop.index %}
+                  <div class="map-row">
+                    <span class="map-csv-col">{{ csv_col }}</span>
+                    <select
+                      class="canon-select"
+                      data-section="{{ section }}"
+                      name="map__{{ section }}__{{ csv_col }}"
+                      onchange="onMappingChange(this, '{{ row_id }}')">
+                      <option value="__skip__">— skip —</option>
+                      {% for canon in info.remaining_canonical %}
+                        <option value="{{ canon }}">{{ canon }}</option>
+                      {% endfor %}
+                      <option value="custom">✦ Custom</option>
+                    </select>
+                    <select
+                      name="type__{{ section }}__{{ csv_col }}"
+                      id="typeSel__{{ row_id }}"
+                      class="type-select"
+                      style="display:none">
+                      <option value="string">string</option>
+                      <option value="int">int</option>
+                      <option value="float">float</option>
+                      <option value="date">date</option>
+                      <option value="bool">bool</option>
+                    </select>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if not info.matched and not info.unmatched_csv %}
+              <p class="not-found-note">No columns detected in this file.</p>
+            {% endif %}
+
+          {% else %}
+            <p class="not-found-note">File not found in ZIP</p>
+          {% endif %}
+
+        </div>
+      {% endfor %}
     </div>
+
+    <div class="action-bar">
+      <a href="/mapper" class="btn btn-ghost">&larr; Upload another file</a>
+      <button type="submit" class="btn btn-primary">Create</button>
+    </div>
+
   </form>
 
-  {% if submitted_data %}
-  <div style="margin-top:32px;">
-    <div class="section-label"><h2>Submitted Data</h2></div>
-    <ul style="color:var(--color-gray-light);padding-left:20px;">
-      {% for item in submitted_data %}
-      <li>{{ item }}</li>
-      {% endfor %}
-    </ul>
-  </div>
   {% endif %}
 
 </div>
 
 <script>
-function addBlock() {
-  const type = document.getElementById("blockType").value;
-  const container = document.getElementById("blockContainer");
+function onFileChosen(input) {
+  document.getElementById('fileLabel').textContent = input.files[0]?.name || '';
+}
 
-  const block = document.createElement("div");
-  block.className = "input-block";
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  document.getElementById('zipInput').files = dt.files;
+  document.getElementById('fileLabel').textContent = file.name;
+}
 
-  const label = type.charAt(0).toUpperCase() + type.slice(1);
-  block.innerHTML = `
-    <label>${label}</label>
-    <input type="${type === 'email' ? 'email' : 'text'}" name="data[]" placeholder="Enter ${type}">
-  `;
+var _uploadForm = document.getElementById('uploadForm');
+if (_uploadForm) {
+  _uploadForm.addEventListener('submit', function () {
+    var btn = document.getElementById('submitBtn');
+    btn.textContent = 'Reading ZIP\u2026';
+    btn.disabled = true;
+  });
+}
 
-  container.appendChild(block);
+async function saveFile() {
+  var content = document.getElementById('yamlContent').textContent;
+  if ('showSaveFilePicker' in window) {
+    try {
+      var handle = await window.showSaveFilePicker({
+        suggestedName: 'input_file_mapper.yml',
+        types: [{ description: 'YAML file', accept: { 'text/yaml': ['.yml', '.yaml'] } }],
+      });
+      var writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return; // user cancelled
+    }
+  }
+  // Fallback: trigger browser download
+  var blob = new Blob([content], { type: 'text/yaml' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'input_file_mapper.yml'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyYaml() {
+  var content = document.getElementById('yamlContent').textContent;
+  navigator.clipboard.writeText(content).then(function() {
+    var btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+  });
+}
+
+function onMappingChange(sel, rowId) {
+  // rowId = "{section}__{loopIndex}" — always unambiguous, no special-char issues
+  var typeSel = document.getElementById('typeSel__' + rowId);
+  if (typeSel) typeSel.style.display = (sel.value === 'custom') ? 'inline-block' : 'none';
+
+  // Mutual exclusion: disable already-chosen canonical names in sibling selects
+  var section = rowId.split('__')[0];
+  var selected = new Set();
+  document.querySelectorAll('.canon-select[data-section="' + section + '"]').forEach(function(s) {
+    if (s.value && s.value !== '__skip__' && s.value !== 'custom') selected.add(s.value);
+  });
+  document.querySelectorAll('.canon-select[data-section="' + section + '"]').forEach(function(s) {
+    Array.from(s.options).forEach(function(opt) {
+      if (opt.value && opt.value !== '__skip__' && opt.value !== 'custom') {
+        opt.disabled = selected.has(opt.value) && opt.value !== s.value;
+      }
+    });
+  });
+}
+
+function downloadYaml() {
+  var content = document.getElementById('yamlContent').textContent;
+  var blob = new Blob([content], { type: 'text/yaml' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'input_file_mapper.yml'; a.click();
+  URL.revokeObjectURL(url);
 }
 </script>
 

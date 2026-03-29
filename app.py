@@ -137,10 +137,89 @@ def preview():
 
 @app.route("/mapper", methods=["GET", "POST"])
 def mapper():
+	analysis = None
+	error = None
 	if request.method == "POST":
-		submitted_data = request.form.getlist("data[]")
-		return render_template("mapper.html", submitted_data=submitted_data)
-	return render_template("mapper.html", submitted_data=None)
+		file = request.files.get("file")
+		if not file or file.filename == "":
+			error = "Please select a ZIP file."
+		elif not file.filename.lower().endswith(".zip"):
+			error = "Only .zip files are accepted."
+		else:
+			from scripts.mapper.analyze import analyze_zip
+			sdir     = get_session_dir()
+			filename = secure_filename(file.filename)
+			filepath = os.path.join(sdir, filename)
+			file.save(filepath)
+			try:
+				analysis = analyze_zip(filepath)
+			except Exception as e:
+				os.remove(filepath)
+				error = f"Could not read ZIP: {e}"
+	return render_template("mapper.html", analysis=analysis, error=error)
+
+
+@app.route("/mapper/generate", methods=["POST"])
+def mapper_generate():
+	sections = ["locations", "catalogs", "inventories", "transactions"]
+	output = {}
+	# Flatten to a plain dict (one value per key) to avoid MultiDict edge-cases
+	form = request.form.to_dict()
+	for section in sections:
+		filename = form.get(f"files__{section}", "").strip()
+		if not filename:
+			continue
+		mapping = {}
+		# Auto-matched hidden inputs
+		prefix_auto = f"auto__{section}__"
+		for key, val in form.items():
+			if key.startswith(prefix_auto):
+				val = val.strip()
+				if val:
+					canonical = key[len(prefix_auto):]
+					mapping[canonical] = val
+		# User-mapped unmatched columns — skip anything left at "— skip —"
+		prefix_map = f"map__{section}__"
+		for key, val in form.items():
+			if key.startswith(prefix_map):
+				val = val.strip()
+				if not val or val == "__skip__":
+					# User did not choose a mapping → exclude from output
+					continue
+				csv_col = key[len(prefix_map):]
+				if val == "custom":
+					col_type = form.get(f"type__{section}__{csv_col}", "string").strip() or "string"
+					mapping[f"custom_{csv_col}"] = {"type": col_type, "value": csv_col}
+				else:
+					mapping[val] = csv_col
+		if mapping:
+			output[section] = {"files": filename, "mapping": mapping}
+
+	yaml_str = yaml.dump(output, default_flow_style=False, sort_keys=False, allow_unicode=True)
+	# Best-effort session store for /mapper/download fallback
+	try:
+		session["mapper_yaml"] = yaml_str
+	except Exception:
+		pass
+	# Render preview directly — avoids cookie-size limits and redirect round-trip
+	return render_template("mapper.html", analysis=None, error=None, yaml_preview=yaml_str)
+
+
+@app.route("/mapper/preview")
+def mapper_preview():
+	yaml_str = session.get("mapper_yaml")
+	if not yaml_str:
+		return redirect(url_for("mapper"))
+	return render_template("mapper.html", analysis=None, error=None, yaml_preview=yaml_str)
+
+
+@app.route("/mapper/download")
+def mapper_download():
+	yaml_str = session.get("mapper_yaml", "")
+	buf = io.BytesIO(yaml_str.encode("utf-8"))
+	buf.seek(0)
+	return send_file(buf, mimetype="application/x-yaml",
+					 as_attachment=True, download_name="input_file_mapper.yml")
 
 
 @app.route("/configV", methods=["GET", "POST"])
