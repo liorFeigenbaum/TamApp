@@ -4,6 +4,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import threading
 import uuid
 import datetime
@@ -555,6 +556,11 @@ def git_update():
 		)
 		if result.returncode != 0:
 			return jsonify(ok=False, error=result.stderr.strip()), 500
+
+		pip_result = subprocess.run(
+			[sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+			cwd=_REPO_DIR, capture_output=True, text=True, timeout=120
+		)
 
 		_reload_gunicorn_after(delay=0.6)
 		return jsonify(ok=True, output=result.stdout.strip())
