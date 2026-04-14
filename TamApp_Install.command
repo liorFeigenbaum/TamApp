@@ -19,9 +19,9 @@ T='\033[0;36m'   # teal/cyan
 N='\033[0m'      # reset
 
 REPO_URL="https://github.com/liorFeigenbaum/TamApp.git"
-INSTALL_DIR="$HOME/TamApp"
+  INSTALL_DIR="$HOME/TamApp"
 PORT=5001
-STEPS=4
+STEPS=6
 STEP=0
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -173,7 +173,7 @@ if [ -f "$REQ_FILE" ]; then
         warn "Some packages failed (likely system-level libs like pyodbc/pymssql)."
         warn "Installing core web + data packages only…"
         echo ""
-        CORE="flask gunicorn pandas numpy requests PyYAML Werkzeug Jinja2 boto3 Pillow"
+        CORE="flask gunicorn pandas numpy requests PyYAML Werkzeug Jinja2 boto3 reportlab"
         for pkg in $CORE; do
             if pip install "$pkg" --quiet 2>/dev/null; then
                 ok "$pkg"
