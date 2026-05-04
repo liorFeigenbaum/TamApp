@@ -43,25 +43,43 @@ def get_sink(config_json):
 
 
 def get_sources(config_json):
+	def _form_scalar(val):
+		"""Werkzeug flat=False may use one-element lists for some fields."""
+		if isinstance(val, (list, tuple)) and len(val) == 1:
+			return val[0]
+		return val
+
 	sources = dict()
 	keys_to = [key for key in config_json.keys() if key.startswith("source_")]
 	names = config_json['source_name[]']
 	types = config_json['source_type[]']
 	time_offset = config_json.get('source_time_offset[]', [])
 	path = config_json['source_path[]']
-	connection = config_json.get('source_connection[]', [])
+	connection = list(config_json.get('source_connection[]', []))
 
+	s3_raw = config_json.get('s3_name[]') or []
+	if not isinstance(s3_raw, list):
+		s3_raw = [s3_raw]
+	s3_connection_names = {str(n).strip() for n in s3_raw if n is not None and str(n).strip()}
 
 	for x in range(len(names)):
 		name = names[x]
 		sources[name] = dict()
 		sources[name]['type'] = types[x]
-		if types[x] == 'file':
+		row_type = str(_form_scalar(types[x])).strip().lower()
+		if row_type == 'file':
 			sources[name]['connection'] = 'file'
 			connection.insert(x, 'file')
 		else:
 			sources[name]['connection'] = connection[x]
-		sources[name]['path'] = path[x]
+		conn_ref = str(_form_scalar(sources[name]['connection'])).strip()
+		# S3-backed sources must use "file" (pattern/key), not "path"
+		is_s3_source = row_type == 's3' or (conn_ref != 'file' and conn_ref in s3_connection_names)
+		pat = _form_scalar(path[x])
+		if is_s3_source:
+			sources[name]['file'] = pat
+		else:
+			sources[name]['path'] = pat
 	
 	for key in keys_to:
 		config_json.pop(key, None)

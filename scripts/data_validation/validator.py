@@ -1136,8 +1136,11 @@ def _cross_validate(dfs, canonical_maps, session_dir):
             return None
         missing_vals = col_vals[missing_mask].unique().tolist()[:5]
         fname = _write_csv(df[missing_mask], session_dir,
-                           f"{file_prefix}_{missing_count}_rows.csv")
-        extra_note = f' ("{next(iter(allowed_extra))}" is allowed)' if allowed_extra else ""
+                        f"{file_prefix}_{missing_count}_rows.csv")
+        extra_note = (
+            f' (also allowed: {", ".join(sorted(allowed_extra))})'
+            if allowed_extra else ""
+        )
         return {
             "level": "warning",
             "msg": (
@@ -1313,11 +1316,11 @@ def _cross_validate(dfs, canonical_maps, session_dir):
         issue["msg"] = issue["msg"].replace(repr(txn_map.get("sku_id")), "sku_id")
         issues.append(issue)
 
-    # ── 7. Transactions.source_location_id → Locations.id (or "client") ──────
+    # ── 7. Transactions.source_location_id → Locations.id (or "client"/"supplier")
     issue = _ref_check(
         txn_df, txn_map.get("source_location_id"), loc_ids,
         "Transactions × Locations", "cross_txn_source_location_not_in_locations",
-        allowed_extra={"client"},
+        allowed_extra={"client", "supplier"},
     )
     if issue:
         issue["msg"] = issue["msg"].replace(
@@ -1325,11 +1328,11 @@ def _cross_validate(dfs, canonical_maps, session_dir):
         )
         issues.append(issue)
 
-    # ── 8. Transactions.target_location_id → Locations.id (or "client") ──────
+    # ── 8. Transactions.target_location_id → Locations.id (or "client"/"supplier")
     issue = _ref_check(
         txn_df, txn_map.get("target_location_id"), loc_ids,
         "Transactions × Locations", "cross_txn_target_location_not_in_locations",
-        allowed_extra={"client"},
+        allowed_extra={"client", "supplier"},
     )
     if issue:
         issue["msg"] = issue["msg"].replace(
