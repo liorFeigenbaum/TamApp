@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual — Data Extractor — TAM App</title>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="topbar-brand" href="/">
+    <span class="topbar-brand-dot"></span>
+    TAM App
+  </a>
+</nav>
+
+<div class="page-wrapper">
+  <div class="page-header">
+    <h1>✏️ Manual</h1>
+    <p>Use the other extractors for scripted downloads. This page is a placeholder for ad-hoc steps.</p>
+  </div>
+
+  <div class="input-block" style="max-width: 640px;">
+    <p style="color: var(--color-gray-light); line-height: 1.6;">
+      <strong>Backup IO</strong> pulls from each IO source’s <code>*-backup</code> bucket.<br>
+      <strong>IO</strong> pulls the same keys from the primary IO bucket.<br>
+      <strong>API validation / API</strong> use the first sink’s <code>filename</code> template and fixed S3 API buckets.
+    </p>
+  </div>
+
+  <div style="margin-top: 32px;">
+    <a href="/data_extractor" class="btn btn-ghost">← Back to Data Extractor</a>
+  </div>
+</div>
+
+</body>
+</html>

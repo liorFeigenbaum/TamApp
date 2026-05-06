@@ -19,6 +19,7 @@ from toll_box.logs import start_log
 from scripts.config_yaml import creat
 from scripts.config_yaml_validation.config_validator import validate_config_yaml
 from scripts.data_validation.validator import validate_zip
+from scripts.data_extractor import api_sink_fetch as api_sink_fetch_script
 from scripts.data_extractor import backup_io as backup_io_script
 from scripts.data_validation import pdf_report as validation_pdf
 
@@ -323,49 +324,182 @@ def data_extractor():
 	return render_template("data_extractor.html", aws_ok=aws_ok, aws_issue_type=aws_issue_type, aws_issue=aws_issue)
 
 
-@app.route("/data_extractor/backup-io", methods=["GET", "POST"])
-def backup_io():
-	results    = None
-	error      = None
-	prev_start = None
-	prev_end   = None
+def _dated_s3_extract_post(run_fn, default_output_dir):
+	"""
+	Run a (config_path, start_date, end_date, output_dir) -> (results, error) job
+	from a standard POST (config upload + date range + output dir).
+	Returns (results, error, prev_start, prev_end).
+	"""
+	results = None
+	error = None
+	prev_start = prev_end = None
 
-	if request.method == "POST":
-		config_file = request.files.get("config_file")
-		start_str   = request.form.get("start_date", "").strip()
-		end_str     = request.form.get("end_date",   "").strip()
-		output_dir  = request.form.get("output_dir", "~/Desktop/backup_io").strip()
+	config_file = request.files.get("config_file")
+	start_str = request.form.get("start_date", "").strip()
+	end_str = request.form.get("end_date", "").strip()
+	output_dir = request.form.get("output_dir", default_output_dir).strip()
 
-		prev_start = start_str
-		prev_end   = end_str
+	prev_start = start_str
+	prev_end = end_str
 
-		if not config_file or config_file.filename == "":
-			error = "Please upload a config.yaml file."
-		elif not start_str or not end_str:
-			error = "Please select a date range."
-		else:
-			try:
-				start_date = datetime.date.fromisoformat(start_str)
-				end_date   = datetime.date.fromisoformat(end_str)
+	if not config_file or config_file.filename == "":
+		error = "Please upload a config.yaml file."
+	elif not start_str or not end_str:
+		error = "Please select a date range."
+	else:
+		try:
+			start_date = datetime.date.fromisoformat(start_str)
+			end_date = datetime.date.fromisoformat(end_str)
 
-				sdir     = get_session_dir()
-				filename = secure_filename(config_file.filename)
-				cfg_path = os.path.join(sdir, filename)
-				config_file.save(cfg_path)
+			sdir = get_session_dir()
+			filename = secure_filename(config_file.filename)
+			cfg_path = os.path.join(sdir, filename)
+			config_file.save(cfg_path)
 
-				results, error = backup_io_script.run(
-					cfg_path, start_date, end_date, output_dir
-				)
-			except Exception as e:
-				error = str(e)
+			results, error = run_fn(cfg_path, start_date, end_date, output_dir)
+		except Exception as e:
+			error = str(e)
 
+	return results, error, prev_start, prev_end
+
+
+# Shared UI for /data_extractor/api and /data_extractor/api-validation (bucket is server-side only).
+_API_SINK_PAGE_TITLE = "API export"
+_API_SINK_PAGE_SUBTITLE = (
+	"Download dated zips using the first sink’s <code>filename</code> template (strftime) in "
+	"config.yaml."
+)
+_API_SINK_DEFAULT_OUTPUT = "~/Desktop/api_export"
+_API_SINK_CONFIG_HINT = (
+	"The first sink’s <code>filename</code> template (strftime) selects each day’s zip in S3."
+)
+_API_SINK_OUTPUT_HINT = (
+	"Each day is saved under <code>output_dir/{date}/</code> (zip or extracted files)."
+)
+
+
+def _render_extractor_dated(
+	results,
+	error,
+	prev_start,
+	prev_end,
+	*,
+	form_action,
+	page_title,
+	page_subtitle,
+	default_output,
+	api_sink_page=False,
+	prev_extract_zip=False,
+	config_file_hint=None,
+	output_path_hint=None,
+):
 	return render_template(
 		"backup_io.html",
 		results=results,
 		error=error,
 		prev_start=prev_start,
 		prev_end=prev_end,
+		form_action=form_action,
+		page_title=page_title,
+		page_subtitle=page_subtitle,
+		default_output=default_output,
+		api_sink_page=api_sink_page,
+		prev_extract_zip=prev_extract_zip,
+		config_file_hint=config_file_hint,
+		output_path_hint=output_path_hint,
 	)
+
+
+@app.route("/data_extractor/backup-io", methods=["GET", "POST"])
+def backup_io():
+	results = error = None
+	prev_start = prev_end = None
+	if request.method == "POST":
+		results, error, prev_start, prev_end = _dated_s3_extract_post(
+			backup_io_script.run, "~/Desktop/backup_io"
+		)
+	return _render_extractor_dated(
+		results,
+		error,
+		prev_start,
+		prev_end,
+		form_action=url_for("backup_io"),
+		page_title="💾 Backup IO",
+		page_subtitle=(
+			"Same sources and paths as config — downloads from the "
+			"<code>onebeat-io-backup</code> bucket."
+		),
+		default_output="~/Desktop/backup_io",
+	)
+
+
+@app.route("/data_extractor/io", methods=["GET", "POST"])
+def data_extractor_io():
+	results = error = None
+	prev_start = prev_end = None
+	if request.method == "POST":
+		results, error, prev_start, prev_end = _dated_s3_extract_post(
+			backup_io_script.run_io_live, "~/Desktop/io_live"
+		)
+	return _render_extractor_dated(
+		results,
+		error,
+		prev_start,
+		prev_end,
+		form_action=url_for("data_extractor_io"),
+		page_title="📂 IO (live bucket)",
+		page_subtitle=(
+			"Same as Backup IO — downloads from the <code>onebeat-io</code> bucket "
+			"instead of <code>onebeat-io-backup</code>."
+		),
+		default_output="~/Desktop/io_live",
+	)
+
+
+def _data_extractor_api_sink_view(api_bucket_mode: str, form_endpoint: str):
+	"""GET/POST handler shared by live vs validation API extractors; only ``api_bucket_mode`` differs."""
+	results = error = None
+	prev_start = prev_end = None
+	# Default on: API workflow expects files inside the zip, not only the archive.
+	prev_extract_zip = True
+	if request.method == "POST":
+		extract_zip = request.form.get("extract_zip") == "on"
+		prev_extract_zip = extract_zip
+		results, error, prev_start, prev_end = _dated_s3_extract_post(
+			lambda cfg, s, e, out: api_sink_fetch_script.run(
+				cfg, s, e, out, api_bucket_mode, extract_zip=extract_zip
+			),
+			_API_SINK_DEFAULT_OUTPUT,
+		)
+	return _render_extractor_dated(
+		results,
+		error,
+		prev_start,
+		prev_end,
+		form_action=url_for(form_endpoint),
+		page_title=_API_SINK_PAGE_TITLE,
+		page_subtitle=_API_SINK_PAGE_SUBTITLE,
+		default_output=_API_SINK_DEFAULT_OUTPUT,
+		api_sink_page=True,
+		prev_extract_zip=prev_extract_zip,
+		config_file_hint=_API_SINK_CONFIG_HINT,
+		output_path_hint=_API_SINK_OUTPUT_HINT,
+	)
+
+
+@app.route("/data_extractor/api", methods=["GET", "POST"])
+def data_extractor_api():
+	return _data_extractor_api_sink_view("live", "data_extractor_api")
+
+
+@app.route("/data_extractor/api-validation", methods=["GET", "POST"])
+def data_extractor_api_validation():
+	return _data_extractor_api_sink_view("validation", "data_extractor_api_validation")
+
+
+@app.route("/data_extractor/manual")
+def data_extractor_manual():
+	return render_template("data_extractor_manual.html")
 
 
 @app.route("/api/browse-dir")

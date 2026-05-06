@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Backup IO — TAM App</title>
+  <title>{{ page_title }} — TAM App</title>
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
@@ -53,6 +53,33 @@
     padding: 10px 12px;
     border-top: 1px solid var(--color-border);
   }
+  .extract-zip-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .extract-zip-row .extract-zip-cb {
+    width: 1.125rem !important;
+    height: 1.125rem;
+    min-width: 1.125rem;
+    margin-top: 0.2rem;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .input-block label.extract-zip-label {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--color-gray-light);
+    cursor: pointer;
+  }
+
   .spinner {
     display: none;
     width: 18px; height: 18px;
@@ -68,21 +95,25 @@
 
 <div class="page-wrapper">
   <div class="page-header">
-    <h1>💾 Backup IO</h1>
-    <p>Download historical source files from the S3 backup bucket.</p>
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_subtitle | safe }}</p>
   </div>
 
   {% if error %}
   <div class="msg-error" style="margin-bottom: 24px;">{{ error }}</div>
   {% endif %}
 
-  <form method="POST" enctype="multipart/form-data" id="backup-form">
+  <form method="POST" enctype="multipart/form-data" id="backup-form" action="{{ form_action }}">
 
     <div class="input-block" style="margin-bottom: 16px;">
       <label>config.yaml</label>
       <input type="file" name="config_file" accept=".yaml,.yml" required>
       <div style="font-size:0.78rem; color:var(--color-gray); margin-top:6px;">
-        Sources connected to a regular S3 IO bucket will be auto-detected.
+        {% if config_file_hint %}
+          {{ config_file_hint | safe }}
+        {% else %}
+          Sources connected to a regular S3 IO bucket will be auto-detected.
+        {% endif %}
       </div>
     </div>
 
@@ -102,7 +133,7 @@
       <label>Output Directory</label>
       <div style="display:flex; gap:10px; align-items:center; margin-top:8px;">
         <input type="text" name="output_dir" id="output_dir_input"
-               value="~/Desktop/backup_io" required
+               value="{{ default_output }}" required
                style="flex:1; cursor:default;"
                readonly>
         <button type="button" class="btn btn-ghost" id="browse-btn"
@@ -111,9 +142,25 @@
         </button>
       </div>
       <div style="font-size:0.78rem; color:var(--color-gray); margin-top:6px;">
-        Files will be saved as <code>output_dir/{date}/{source_name}</code>.
+        {% if output_path_hint %}
+          {{ output_path_hint | safe }}
+        {% else %}
+          Files will be saved as <code>output_dir/{date}/{source_name}</code>.
+        {% endif %}
       </div>
     </div>
+
+    {% if api_sink_page | default(false) %}
+    <div class="input-block" style="margin-bottom: 24px;">
+      <div class="extract-zip-row">
+        <input type="checkbox" name="extract_zip" id="extract_zip_cb" value="on" class="extract-zip-cb"
+               {% if prev_extract_zip | default(false) %}checked{% endif %}>
+        <label for="extract_zip_cb" class="extract-zip-label">
+          Unzip into the date folder and remove the <code>.zip</code> (off = download archives only).
+        </label>
+      </div>
+    </div>
+    {% endif %}
 
     <button type="submit" class="btn btn-primary" id="run-btn">
       ▶ Run Extraction

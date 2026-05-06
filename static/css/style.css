@@ -237,6 +237,16 @@ a:hover { color: var(--color-coral); }
   border-color: var(--color-teal);
 }
 
+.input-block input[type="checkbox"],
+.input-block input[type="radio"] {
+  width: auto;
+  max-width: none;
+  padding: 0;
+  display: inline-block;
+  vertical-align: middle;
+  accent-color: var(--color-teal);
+}
+
 .input-block input[readonly] {
   opacity: 0.6;
   cursor: not-allowed;
