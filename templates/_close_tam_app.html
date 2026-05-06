@@ -1,0 +1,31 @@
+<button type="button"
+        class="btn-topbar-close"
+        id="tam-app-close-btn"
+        title="Stop the local Tam App server and close this window">
+  Close Tam App
+</button>
+<script>
+(function () {
+  var btn = document.getElementById('tam-app-close-btn');
+  if (!btn || btn.dataset.bound) return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', function () {
+    if (!window.confirm('Close Tam App? This stops the local server.')) return;
+    btn.disabled = true;
+    fetch('{{ url_for("shutdown_tam_app") }}', {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+    })
+      .catch(function () {})
+      .then(function () {
+        window.close();
+        setTimeout(function () {
+          try {
+            window.open('', '_self');
+            window.close();
+          } catch (e) {}
+        }, 150);
+      });
+  });
+})();
+</script>

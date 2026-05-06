@@ -98,6 +98,18 @@ a:hover { color: var(--color-coral); }
   display: inline-block;
 }
 
+.topbar-trail {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.topbar-trail .topbar-nav {
+  margin-left: 0;
+}
+
 .topbar-nav {
   display: flex;
   gap: 4px;
@@ -115,6 +127,34 @@ a:hover { color: var(--color-coral); }
 .topbar-nav a:hover {
   color: var(--color-white);
   background: var(--color-bg-card);
+}
+
+.btn-topbar-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: 1.5px solid var(--color-coral);
+  color: var(--color-coral);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+
+.btn-topbar-close:hover:not(:disabled) {
+  background: var(--color-coral);
+  color: var(--color-white);
+}
+
+.btn-topbar-close:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* ─── Page Header ────────────────────────────────────────────────── */

@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 import uuid
 import datetime
 
@@ -700,6 +701,32 @@ def git_update():
 		return jsonify(ok=True, output=result.stdout.strip())
 	except Exception as e:
 		return jsonify(ok=False, error=str(e)), 500
+
+
+@app.route("/shutdown_tam_app", methods=["POST"])
+def shutdown_tam_app():
+	"""Stop the local server (Werkzeug dev) or signal the parent (e.g. gunicorn master)."""
+	werkzeug_shutdown = request.environ.get("werkzeug.server.shutdown")
+
+	def _stop():
+		time.sleep(0.2)
+		if werkzeug_shutdown is not None:
+			werkzeug_shutdown()
+			return
+		ppid = os.getppid()
+		if ppid > 1:
+			try:
+				os.kill(ppid, signal.SIGTERM)
+			except OSError:
+				pass
+		try:
+			os.kill(os.getpid(), signal.SIGTERM)
+		except OSError:
+			os._exit(0)
+
+	threading.Thread(target=_stop, daemon=True).start()
+	return jsonify(ok=True)
+
 
 @app.route("/create_launcher", methods=["POST"])
 def create_launcher():
